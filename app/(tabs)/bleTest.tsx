@@ -1,9 +1,14 @@
 import { handleAndroidPermissions } from "@/utils/permission";
+import { Image } from "expo-image";
 import { DeviceList } from "@/components/bluetooth/deviceList";
 import {Button} from "react-native"
 
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Platform, Alert, Linking} from "react-native";
+
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+
 import BleManager, {
     Peripheral,
     BleScanMatchMode,
@@ -11,6 +16,10 @@ import BleManager, {
     BleScanMode,
 } from "react-native-ble-manager";
 import { FlatList } from "react-native";
+import ParallaxScrollView from "@/components/parallax-scroll-view";
+import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
+import { blue } from "react-native-reanimated/lib/typescript/Colors";
+import { BluetoothDeviceList } from "@/components/bluetooth/bluetoothDeviceList";
 
 
 
@@ -38,7 +47,7 @@ import { FlatList } from "react-native";
     return true; 
 };*/
 
-const SECONDS_TO_SCAN_FOR = 5;
+const SECONDS_TO_SCAN_FOR = 10;
 const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
 
@@ -48,8 +57,12 @@ const BluetoothDemoScreen: React.FC = () => {
     const [peripherals, setPeripherals] = useState(
         new Map<Peripheral["id"], Peripheral>()
     );
-
+    const [bluetoothDevices, setBluetoothDevices] = useState( 
+        new BluetoothDeviceContainer([]))
+    const [showUnnamed,setShowUnnamed] = useState(true)
     useEffect(() => {
+        handleAndroidPermissions();
+        //requestPermissions();
         BleManager.start({ showAlert: false })
             .then(() => console.debug("BleManager started."))
             .catch((error: any) =>
@@ -61,8 +74,6 @@ const BluetoothDemoScreen: React.FC = () => {
             BleManager.onDiscoverPeripheral(handleDiscoverPeripheral),
             BleManager.onStopScan(handleStopScan),
         ];
-        //requestPermissions();
-        handleAndroidPermissions();
 
         return () => {
             for (const listener of listeners) {
@@ -71,7 +82,21 @@ const BluetoothDemoScreen: React.FC = () => {
         };
     }, []);
     const handleDiscoverPeripheral = (peripheral: Peripheral) => {
-        console.debug("[handleDiscoverPeripheral] new BLE peripheral=", peripheral);
+        //console.debug("[handleDiscoverPeripheral] new BLE peripheral=", peripheral);
+        let rssiReading = RssiReading.peripheralToRssiReading(peripheral)
+        let bleDevice = bluetoothDevices.getDevice(peripheral.id)
+        let name = peripheral.name
+        if(bleDevice == undefined){
+            if(name == undefined){
+                name=""
+            }
+            bleDevice = new BluetoothDevice(peripheral.id,name, [])
+        }
+        bleDevice.addRssiReading(rssiReading)
+        setBluetoothDevices((container) => {
+            container.addDevice(bleDevice)
+            return new BluetoothDeviceContainer(container.namedDevices,container.unNamedDevices)
+        });
         if (!peripheral.name) {
             peripheral.name = "NO NAME";
         }
@@ -147,32 +172,48 @@ const BluetoothDemoScreen: React.FC = () => {
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Bluetooth Demo</Text>
-            <Button onPress={startScan} title={titleText}/>
-            <FlatList 
-                data={Array.from(peripherals)}
-                renderItem={({item}) => <DeviceList peripheral={item[1]}/>}
+        <ParallaxScrollView
+            headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+            headerImage={
+                <Image
+                    source={require('@/assets/images/partial-react-logo.png')}
+                />
+            }>
 
+        <ThemedView style={styles.titleContainer}>
+            <ThemedText type="title">Bluetooth Scanner</ThemedText>
+        </ThemedView>
+        <ThemedView style={styles.stepContainer}>
+            <Button onPress={() => {setBluetoothDevices(new BluetoothDeviceContainer([]))}} title={"Clear Scanned Devices"}/>
+            <Button onPress={ () => {setShowUnnamed(!showUnnamed)}} title={"Hide unnamed devices"}/>
+            <Button onPress={startScan} title={titleText}/>
+            <BluetoothDeviceList
+                showUnnamed={showUnnamed}
+                devices={bluetoothDevices}
             />
 
-        </View>
+        </ThemedView>
+        </ParallaxScrollView>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#f5f5f5",
-        paddingVertical: "10%",
-        paddingHorizontal: 20,
-    },
-    header: {
-        fontSize: 24,
-        fontWeight: "bold",
-        marginBottom: 16,
-        color: "#333",
-    },
-});
 
+const styles = StyleSheet.create({
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepContainer: {
+    gap: 8,
+    marginBottom: 8,
+  },
+  reactLogo: {
+    height: 178,
+    width: 290,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+  },
+});
 export default BluetoothDemoScreen;
