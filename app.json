@@ -36,6 +36,10 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-sqlite",
+        {"enableFTS":false,
+        "useSQLCipher":false}
+      ],
       [
         "expo-splash-screen",
         {
@@ -48,7 +52,15 @@
           }
         }
       ],
-        ["react-native-ble-manager",{"isBleRequired":true}]
+      [
+        "react-native-ble-manager",
+        {
+          "isBleRequired": true
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
