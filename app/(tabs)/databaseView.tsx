@@ -8,31 +8,31 @@ import { Image } from 'expo-image';
 import { Device, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase } from '@/utils/database';
 
 
-async function printDatabaseStuff(db: SQLite.SQLiteDatabase){
+async function printDatabaseStuff(db?:SQLite.SQLiteDatabase){
+    let closeDb=false
+    if(db == undefined){
+        db = await getDatabase() 
+        closeDb=true
+    }
     let text=""
     for await (const row of db.getEachAsync<Device>('SELECT * from devices')){
         console.log(row.macaddress, row.deviceName)
         text+="mac:"+row.macaddress.toString() + ", device name:" + row.deviceName.toString()+ "\n";
     }
+    if(closeDb){
+        db.closeSync()
+    }
     return text
 }
 
 const databaseTest = ()  =>{
-    const [ database, setDatabase] = useState<SQLite.SQLiteDatabase>();
-    if( database == undefined){
-        getDatabase().then( (database:SQLite.SQLiteDatabase) => { 
-            setDatabase(database); 
-        });
-    }
+    const [ deviceList, setDeviceList] = useState<string>("");
     let updateDeviceList = () => {
-        if ( database != undefined){
-            printDatabaseStuff(database).then( (text) =>{
-                setDeviceList(text)
-            })
-        }
+        printDatabaseStuff().then( (text) =>{
+            setDeviceList(text)
+        })
     }
     updateDeviceList()
-    const [ deviceList, setDeviceList] = useState<string>("");
     return (
         <ParallaxScrollView
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
@@ -43,26 +43,21 @@ const databaseTest = ()  =>{
             }>
         <ThemedView>
             <Button onPress= { async () => { 
-                if(database != undefined){
-                    const randomId = Math.random();
-                    let dev = new Device(randomId.toString(), "test",undefined, true, undefined) 
-                    await addDeviceToDatabase(database, dev)
-                    setDeviceList("a")
-                }
+                let db = await getDatabase()
+                const randomId = Math.random();
+                let dev = new Device(randomId.toString(), "test",undefined, true, undefined) 
+                await addDeviceToDatabase(db, dev)
+                setDeviceList("a")
+                db.closeSync()
+                
             }} title={"Add to db"}/>
             <Button onPress= { async () => {
-                if (database != undefined){
-                    await clearDatabase(database);
-                    setDeviceList("")
-                }
+                let db = await getDatabase()
+                await clearDatabase(db);
+                db.closeSync()
             }} title={"Clear db"}/>
             <Button onPress= { () => {
-                    if(database != undefined){
-                        database.closeSync(); 
-                        setDatabase(undefined)
-                    
-                    }
-                    deleteDatabase()
+                deleteDatabase()
             }} title={"Delete db"}/>
             <ThemedText>{ deviceList } </ThemedText>
         </ThemedView>

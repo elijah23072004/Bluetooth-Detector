@@ -20,6 +20,7 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
 import { blue } from "react-native-reanimated/lib/typescript/Colors";
 import { BluetoothDeviceList } from "@/components/bluetooth/bluetoothDeviceList";
+import { Device, getDatabase, addDeviceToDatabase } from "@/utils/database";
 
 
 
@@ -52,6 +53,27 @@ const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
 
 
+async function enableBluetooth(){
+        try {
+            console.debug("[enableBluetooth]");
+            await BleManager.enableBluetooth();
+        } catch (error) {
+            console.error("[enableBluetooth] thrown", error);
+        }
+
+}
+async function saveDeviceToDatabase(device:Device){
+    let db = await getDatabase()
+    try{
+        await addDeviceToDatabase(db,device)
+        //put in try catch block to handle exception thrown if device with name already exsits in db 
+        // need to actually check with sql
+    }
+    finally{
+        db.closeAsync()
+    }
+    
+}
 const BluetoothDemoScreen: React.FC = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [peripherals, setPeripherals] = useState(
@@ -100,6 +122,13 @@ const BluetoothDemoScreen: React.FC = () => {
         if (!peripheral.name) {
             peripheral.name = "NO NAME";
         }
+        let macaddress=peripheral.id
+        let deviceName=peripheral.name
+        let lastReading=Date.now()
+        let ignore=false
+        let deviceType=""
+        let dev = new Device(macaddress, deviceName, lastReading, ignore, deviceType)
+        saveDeviceToDatabase(dev)
         setPeripherals((map) => {
             return new Map(map.set(peripheral.id, peripheral));
         });
@@ -109,38 +138,13 @@ const BluetoothDemoScreen: React.FC = () => {
         setIsScanning(false);
         console.debug("[handleStopScan] scan is stopped.");
     };
-    const enableBluetooth = async () => {
-        try {
-            console.debug("[enableBluetooth]");
-            await BleManager.enableBluetooth();
-        } catch (error) {
-            console.error("[enableBluetooth] thrown", error);
-        }
-    };
-
     const startScan = async () => {
         const state = await BleManager.checkState();
 
         console.log(state);
 
         if (state === "off") {
-            if (Platform.OS == "ios") {
-                Alert.alert(
-                    "Enable Bluetooth",
-                    "Please enable Bluetooth in Settings to continue.",
-                    [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                            text: "Open Settings",
-                            onPress: () => {
-                                Linking.openURL("App-Prefs:Bluetooth");
-                            },
-                        },
-                    ]
-                );
-            } else {
-                enableBluetooth();
-            }
+            await enableBluetooth();
         }
         if (!isScanning) {
             setPeripherals(new Map<Peripheral["id"], Peripheral>());
