@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from 'react-native';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { Image } from 'expo-image';
-import { Device, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase } from '@/utils/database';
+import { getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceListIterator } from '@/utils/database';
 
 
 async function printDatabaseStuff(db?:SQLite.SQLiteDatabase){
@@ -15,9 +15,15 @@ async function printDatabaseStuff(db?:SQLite.SQLiteDatabase){
         closeDb=true
     }
     let text=""
-    for await (const row of db.getEachAsync<Device>('SELECT * from devices')){
+    for await (const row of getDeviceListIterator(db)){
         console.log(row.macaddress, row.deviceName)
-        text+="mac:"+row.macaddress.toString() + ", device name:" + row.deviceName.toString()+ "\n";
+        let timesScanned = await getNumberOfDeviceReadings(db, row.macaddress)
+        text+="mac:"+row.macaddress.toString() + ", device name:" + row.deviceName.toString()+ ", times scanned:" + timesScanned.toString();
+        if (row.lastReading != undefined){
+            let date = new Date(row.lastReading)
+            text+=", last Reading:"+date
+        }
+        text+="\n"
     }
     if(closeDb){
         db.closeSync()
@@ -42,10 +48,11 @@ const databaseTest = ()  =>{
                 />
             }>
         <ThemedView>
+            <Button onPress= {updateDeviceList} title={"Load"}/>
             <Button onPress= { async () => { 
                 let db = await getDatabase()
                 const randomId = Math.random();
-                let dev = new Device(randomId.toString(), "test",undefined, true, undefined) 
+                let dev = new DeviceEntity(randomId.toString(), "test",undefined, true, undefined) 
                 await addDeviceToDatabase(db, dev)
                 setDeviceList("a")
                 db.closeSync()

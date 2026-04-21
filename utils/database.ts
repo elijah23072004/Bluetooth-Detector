@@ -1,7 +1,8 @@
 import * as SQLite from "expo-sqlite"
+import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 const DB_NAME = "bluetoothDeviceReadings"
-export class Device{
+export class DeviceEntity{
     macaddress:string;
     deviceName:string;
     lastReading?:number;
@@ -15,14 +16,28 @@ export class Device{
         this.deviceType=deviceType
     }
 }
+export class DeviceReadingEntity{
+    macaddress:string;
+    timestamp:Number;
+    rssi: Float;
+    txPower?:Number;
+    serviceInfo?:string;
+    estimatedDistance:Float
+    constructor(macaddress:string, timestamp:Number, rssi:Float, estimatedDistance:Float,txPower?:Number, serviceInfo?:string){
+        this.macaddress=macaddress
+        this.timestamp=timestamp
+        this.rssi=rssi
+        this.txPower=txPower
+        this.serviceInfo=serviceInfo
+        this.estimatedDistance=estimatedDistance
+    }
+}
 
 
 export async function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
     let query = "CREATE TABLE IF NOT EXISTS devices (macaddress TEXT PRIMARY KEY, deviceName TEXT NOT NULL, lastReading TIMESTAMP, ignore BOOL, deviceType TEXT);\n"
-    query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( deviceReadingID INT PRIMARY KEY, timestamp TIMESTAMP NOT NULL, macAddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, FOREIGN KEY(macAddress) REFERENCES devices(macaddress));"
-    console.log(query)
+    query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, macAddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, PRIMARY KEY(timestamp, macaddress), FOREIGN KEY(macAddress) REFERENCES devices(macaddress));"
     await db.execAsync(query)
-    logDatabaseTableSchemas(db)
 }
 
 export async function getDatabase(){
@@ -41,9 +56,34 @@ export async function deleteDatabase(){
     SQLite.deleteDatabaseSync(DB_NAME)
 }
 
+export function getDevice(db:SQLite.SQLiteDatabase, macAddress:string){
+    const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = '?'",macAddress);
+    if (device){
+        return device
+    }
+    return null
+}
+export function isMacaddressInDatabase(db:SQLite.SQLiteDatabase, macAddress:string){
+    return getDevice(db,macAddress) != null
+}
 
 
-export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:Device){
+export async function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAddress:string){
+    let query = "SELECT COUNT(*) FROM deviceReadings WHERE macAddress = ?"
+    console.log(query)
+    console.log(macAddress)
+    let res = await db.getFirstAsync(query, macAddress)
+    console.log(res)
+    if (res == undefined){
+        return 0
+    }
+    if (res['COUNT(*)'] == undefined){
+        return 0    
+    }
+    return res['COUNT(*)']
+}
+
+export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntity){
     let firstHalf= "INSERT INTO devices ( macaddress, deviceName"
     let secondHalf = ") VALUES (?, ?"
     let args = [device.macaddress, device.deviceName]
@@ -69,7 +109,30 @@ export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:Devic
     await db.runAsync(query, args)
 
 }
+export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, reading:DeviceReadingEntity){
+    let firstHalf = "INSERT INTO deviceReadings ( macAddress, rssi, estimatedDistance"
+    let secondHalf = ") VALUES (?,  ?, ?"
+    let args = [reading.macaddress, reading.rssi.toString(), reading.estimatedDistance.toString()]
 
+    /*if (reading.txPower != undefined){
+        firstHalf+=", txPower"
+        secondHalf+=", ?"
+        args.push(reading.txPower.toString())
+    }
+    if (reading.serviceInfo!= undefined){
+        firstHalf+=", ServiceInfo"
+        secondHalf+=", ?"
+        args.push(reading.serviceInfo)
+    }*/
+    let query = firstHalf + secondHalf + ")";
+    console.log(query)
+    await db.runAsync(query, args)
+    query = "UPDATE device SET lastReading = ? WHERE macaddress = ?"
+    let lastReading = db.getFirstAsync("SELECT timestamp FROM deviceReadings WHERE macAddress = ? ORDER BY timestamp ASC", reading.macaddress) 
+    await db.runAsync(query,lastReading.toString(), reading.macaddress)
+
+
+}
 
 export async function logDatabaseTableSchemas(db:SQLite.SQLiteDatabase){
     let query = "SELECT tbl_name FROM sqlite_master WHERE type='table'";
@@ -77,4 +140,10 @@ export async function logDatabaseTableSchemas(db:SQLite.SQLiteDatabase){
         console.log(row)
     }
     
+}
+
+export function getDeviceListIterator(db:SQLite.SQLiteDatabase){
+    let query = "SELECT * FROM devices";
+    return db.getEachAsync<DeviceEntity>(query)
+
 }

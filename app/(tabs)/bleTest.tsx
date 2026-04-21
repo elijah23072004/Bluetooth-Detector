@@ -15,14 +15,11 @@ import BleManager, {
     BleScanCallbackType,
     BleScanMode,
 } from "react-native-ble-manager";
-import { FlatList } from "react-native";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
-import { blue } from "react-native-reanimated/lib/typescript/Colors";
 import { BluetoothDeviceList } from "@/components/bluetooth/bluetoothDeviceList";
-import { Device, getDatabase, addDeviceToDatabase } from "@/utils/database";
-
-
+import * as SQLite from "expo-sqlite"
+import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase,isMacaddressInDatabase}from "@/utils/database"
 
 /*const requestPermissions = async () => {
     if (Platform.OS === 'android') {
@@ -62,18 +59,36 @@ async function enableBluetooth(){
         }
 
 }
-async function saveDeviceToDatabase(device:Device){
-    let db = await getDatabase()
-    try{
+async function saveDeviceToDatabase(device:DeviceEntity,db?:SQLite.SQLiteDatabase){
+    let closeDB=false
+    if(db == undefined){
+        closeDB=true
+        db=await getDatabase()    
+    }
+    if(!isMacaddressInDatabase(db,device.macaddress)){
+        
         await addDeviceToDatabase(db,device)
-        //put in try catch block to handle exception thrown if device with name already exsits in db 
-        // need to actually check with sql
     }
-    finally{
-        db.closeAsync()
+    if(closeDB){
+        db.closeSync()    
     }
-    
+
 }
+
+async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLite.SQLiteDatabase){
+    let closeDB=false
+    if(db == undefined){
+        closeDB=true
+        db=await getDatabase()    
+    }
+        
+    await addDeviceReadingToDatabase(db,reading)
+    if(closeDB){
+        db.closeSync()    
+    }
+
+}
+
 const BluetoothDemoScreen: React.FC = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [peripherals, setPeripherals] = useState(
@@ -82,6 +97,7 @@ const BluetoothDemoScreen: React.FC = () => {
     const [bluetoothDevices, setBluetoothDevices] = useState( 
         new BluetoothDeviceContainer([]))
     const [showUnnamed,setShowUnnamed] = useState(true)
+    const [db, setDB] = useState<SQLite.SQLiteDatabase>()
     useEffect(() => {
         handleAndroidPermissions();
         //requestPermissions();
@@ -127,8 +143,10 @@ const BluetoothDemoScreen: React.FC = () => {
         let lastReading=Date.now()
         let ignore=false
         let deviceType=""
-        let dev = new Device(macaddress, deviceName, lastReading, ignore, deviceType)
-        saveDeviceToDatabase(dev)
+        let dev = new DeviceEntity(macaddress, deviceName, lastReading, ignore, deviceType)
+        let reading = new DeviceReadingEntity(macaddress, rssiReading.timestamp, rssiReading.rssi, bleDevice.getRecentDistance(), rssiReading.tx_power)
+        saveDeviceToDatabase(dev,db)
+        saveDeviceReadingToDatabase(reading,db)
         setPeripherals((map) => {
             return new Map(map.set(peripheral.id, peripheral));
         });
@@ -137,8 +155,15 @@ const BluetoothDemoScreen: React.FC = () => {
     const handleStopScan = () => {
         setIsScanning(false);
         console.debug("[handleStopScan] scan is stopped.");
+        if (db != undefined){
+            db.closeSync()
+            setDB(undefined)
+        }
     };
     const startScan = async () => {
+        if (db == undefined){
+            setDB(await getDatabase())    
+        }
         const state = await BleManager.checkState();
 
         console.log(state);
