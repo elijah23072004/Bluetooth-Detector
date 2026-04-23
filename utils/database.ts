@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite"
+import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegistry";
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 const DB_NAME = "bluetoothDeviceReadings"
@@ -16,6 +17,11 @@ export class DeviceEntity{
         this.deviceType=deviceType
     }
 }
+
+export function deviceEntiyToString(device:DeviceEntity){
+    return device.deviceName + " macaddress:" + device.macaddress + " last reading time:"+device.lastReading?.toString() 
+}
+
 export class DeviceReadingEntity{
     macaddress:string;
     timestamp:Number;
@@ -31,7 +37,13 @@ export class DeviceReadingEntity{
         this.serviceInfo=serviceInfo
         this.estimatedDistance=estimatedDistance
     }
+
 }
+
+export function deviceReadingEntityToString(reading:DeviceReadingEntity): string{
+    return reading.macaddress+" timestamp:" + reading.timestamp.toString() + ":" + "rssi reading:"+reading.rssi.toString()+ " txPower:"+reading.txPower + " estimatedDistance:"+ reading.estimatedDistance.toString() + " serviceInfo:" + reading.serviceInfo
+}
+
 
 
 export async function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
@@ -82,6 +94,42 @@ export async function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAdd
     }
     return res['COUNT(*)']
 }
+
+export async function getDeviceReadings(db:SQLite.SQLiteDatabase, macaddress:string){
+    let query = "SELECT * FROM deviceReadings WHERE macAddress = ?"
+    let output = []
+    for await (const reading of db.getEachAsync<DeviceReadingEntity>(query,macaddress)){
+        output.push(reading as DeviceReadingEntity)
+    }
+    return output
+}
+
+export async function getDeviceReadingsString(macaddress:string, db?:SQLite.SQLiteDatabase){
+    if(db==undefined){
+        db=await getDatabase()
+    }
+    let readings = await getDeviceReadings(db,macaddress)
+    let out = ""
+    for (let reading of readings){
+        console.log(reading)
+        console.log(typeof(reading))
+        out+= deviceReadingEntityToString(reading)+"\n"
+    
+    }
+    return out
+}
+export async function getAllDeviceReadingStrings(devices:DeviceEntity[], db?:SQLite.SQLiteDatabase){
+    if(db==undefined){
+        db=await getDatabase()
+    }
+    let out:Record<string,string> = {}
+    for (let device of devices){
+        out[device.macaddress] = await getDeviceReadingsString(device.macaddress, db)
+    }
+    return out
+}
+
+
 
 export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntity){
     let firstHalf= "INSERT INTO devices ( macaddress, deviceName"
@@ -146,4 +194,32 @@ export function getDeviceListIterator(db:SQLite.SQLiteDatabase){
     let query = "SELECT * FROM devices";
     return db.getEachAsync<DeviceEntity>(query)
 
+}
+function compare_device_entites(a:DeviceEntity, b:DeviceEntity):number{
+    if (a.lastReading == undefined){
+        if(b.lastReading == undefined){
+            return 0    
+        }
+        return 1
+    }
+    if (b.lastReading == undefined){
+        return -1    
+    }
+    return b.lastReading - a.lastReading
+}
+function sort_device_list(device_list:DeviceEntity[], comp_fn: (a:DeviceEntity, b:DeviceEntity) => number = compare_device_entites){
+    let output = device_list 
+    output.sort(comp_fn)
+    //bubble sort for now
+    return output 
+}
+export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=true){
+    let device_list :DeviceEntity[]= [];
+    for await (const device of getDeviceListIterator(db)){
+        device_list.push(device)
+    }
+    if(sort_list){
+        device_list = sort_device_list(device_list)
+    }
+    return device_list
 }

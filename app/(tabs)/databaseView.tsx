@@ -5,40 +5,51 @@ import { useState } from 'react';
 import { Button } from 'react-native';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { Image } from 'expo-image';
-import { getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceListIterator } from '@/utils/database';
+import { getAllDeviceReadingStrings, getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceList } from '@/utils/database';
+
+import { DeviceList } from '@/components/bluetooth/deviceEntityList'; 
 
 
-async function printDatabaseStuff(db?:SQLite.SQLiteDatabase){
+
+async function getDevices(db?:SQLite.SQLiteDatabase){
     let closeDb=false
     if(db == undefined){
         db = await getDatabase() 
         closeDb=true
     }
-    let text=""
-    for await (const row of getDeviceListIterator(db)){
-        console.log(row.macaddress, row.deviceName)
-        let timesScanned = await getNumberOfDeviceReadings(db, row.macaddress)
-        text+="mac:"+row.macaddress.toString() + ", device name:" + row.deviceName.toString()+ ", times scanned:" + timesScanned.toString();
-        if (row.lastReading != undefined){
-            let date = new Date(row.lastReading)
-            text+=", last Reading:"+date
-        }
-        text+="\n"
-    }
+    let devices = await getDeviceList(db)
     if(closeDb){
         db.closeSync()
     }
-    return text
+    return devices
 }
 
 const databaseTest = ()  =>{
-    const [ deviceList, setDeviceList] = useState<string>("");
-    let updateDeviceList = () => {
-        printDatabaseStuff().then( (text) =>{
-            setDeviceList(text)
-        })
+    //const [ deviceList, setDeviceList] = useState<string>("");
+    //let updateDeviceList = () => {
+    //    printDatabaseStuff().then( (text) =>{
+    //        setDeviceList(text)
+    //    })
+    //}
+    //updateDeviceList()
+    const [deviceView, setDeviceView] = useState<DeviceEntity[]>([])
+   // const [deviceReadings, setDeviceReadings] = useState<Record<string,string>>({})
+    const [firstRun, setFirstRun] = useState<boolean>(true)
+    let getData = async () => {
+        let db = await getDatabase()
+        let devices = await getDevices(db)
+        //let readings = await getAllDeviceReadingStrings(devices,db) 
+        setFirstRun(false)
+        setDeviceView(devices)
+        //setDeviceReadings(readings)
+        
     }
-    updateDeviceList()
+    if(firstRun == true){
+
+        getData()
+    }
+    
+
     return (
         <ParallaxScrollView
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
@@ -48,13 +59,12 @@ const databaseTest = ()  =>{
                 />
             }>
         <ThemedView>
-            <Button onPress= {updateDeviceList} title={"Load"}/>
             <Button onPress= { async () => { 
                 let db = await getDatabase()
                 const randomId = Math.random();
                 let dev = new DeviceEntity(randomId.toString(), "test",undefined, true, undefined) 
                 await addDeviceToDatabase(db, dev)
-                setDeviceList("a")
+                //setDeviceList("a")
                 db.closeSync()
                 
             }} title={"Add to db"}/>
@@ -66,10 +76,11 @@ const databaseTest = ()  =>{
             <Button onPress= { () => {
                 deleteDatabase()
             }} title={"Delete db"}/>
-            <ThemedText>{ deviceList } </ThemedText>
+            <DeviceList devices={deviceView} />
         </ThemedView>
         </ParallaxScrollView>
     )
+//<ThemedText>{ deviceList } </ThemedText>
 }
 
 export default databaseTest
