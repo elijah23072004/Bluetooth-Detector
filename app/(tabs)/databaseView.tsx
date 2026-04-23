@@ -42,6 +42,7 @@ const databaseTest = ()  =>{
         setFirstRun(false)
         setDeviceView(devices)
         //setDeviceReadings(readings)
+        db.closeSync()
         
     }
     if(firstRun == true){
@@ -74,6 +75,7 @@ const databaseTest = ()  =>{
                 db.closeSync()
             }} title={"Clear db"}/>
             <Button onPress= { () => {
+                    
                 deleteDatabase()
             }} title={"Delete db"}/>
             <DeviceList devices={deviceView} />

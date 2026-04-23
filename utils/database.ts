@@ -9,27 +9,37 @@ export class DeviceEntity{
     lastReading?:number;
     ignore?:boolean;
     deviceType?:string;
-    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string){
+    numberOfDeviceReadings?:number;
+    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string, numberOfDeviceReadings?:number){
         this.macaddress=macaddress
         this.deviceName=deviceName
         this.lastReading=lastReading
         this.ignore=ignore
         this.deviceType=deviceType
+        this.numberOfDeviceReadings=numberOfDeviceReadings
     }
 }
 
 export function deviceEntiyToString(device:DeviceEntity){
-    return device.deviceName + " macaddress:" + device.macaddress + " last reading time:"+device.lastReading?.toString() 
+    let out =device.deviceName + " macaddress:" + device.macaddress  
+    if (device.lastReading != undefined){
+        let date = new Date(device.lastReading)
+        out+=" last reading: " + date.toUTCString()
+    }
+    if(device.numberOfDeviceReadings != undefined){
+        out += " number of readings:" + device.numberOfDeviceReadings.toString()
+    }
+    return out 
 }
 
 export class DeviceReadingEntity{
     macaddress:string;
-    timestamp:Number;
+    timestamp:number;
     rssi: Float;
-    txPower?:Number;
+    txPower?:number;
     serviceInfo?:string;
     estimatedDistance:Float
-    constructor(macaddress:string, timestamp:Number, rssi:Float, estimatedDistance:Float,txPower?:Number, serviceInfo?:string){
+    constructor(macaddress:string, timestamp:number, rssi:Float, estimatedDistance:Float,txPower?:number, serviceInfo?:string){
         this.macaddress=macaddress
         this.timestamp=timestamp
         this.rssi=rssi
@@ -41,14 +51,15 @@ export class DeviceReadingEntity{
 }
 
 export function deviceReadingEntityToString(reading:DeviceReadingEntity): string{
-    return reading.macaddress+" timestamp:" + reading.timestamp.toString() + ":" + "rssi reading:"+reading.rssi.toString()+ " txPower:"+reading.txPower + " estimatedDistance:"+ reading.estimatedDistance.toString() + " serviceInfo:" + reading.serviceInfo
+    let date = new Date(reading.timestamp)
+    return reading.macaddress+" timestamp:" + date.toUTCString() + ":" + "rssi reading:"+reading.rssi.toString()+ " txPower:"+reading.txPower + " estimatedDistance:"+ reading.estimatedDistance.toString() + " serviceInfo:" + reading.serviceInfo
 }
 
 
 
 export async function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
     let query = "CREATE TABLE IF NOT EXISTS devices (macaddress TEXT PRIMARY KEY, deviceName TEXT NOT NULL, lastReading TIMESTAMP, ignore BOOL, deviceType TEXT);\n"
-    query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, macAddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, PRIMARY KEY(timestamp, macaddress), FOREIGN KEY(macAddress) REFERENCES devices(macaddress));"
+    query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, macaddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, PRIMARY KEY(timestamp, macaddress), FOREIGN KEY(macaddress) REFERENCES devices(macaddress));"
     await db.execAsync(query)
 }
 
@@ -71,6 +82,7 @@ export async function deleteDatabase(){
 export function getDevice(db:SQLite.SQLiteDatabase, macAddress:string){
     const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = '?'",macAddress);
     if (device){
+        device.numberOfDeviceReadings =getNumberOfDeviceReadings(db,device.macaddress)
         return device
     }
     return null
@@ -80,11 +92,11 @@ export function isMacaddressInDatabase(db:SQLite.SQLiteDatabase, macAddress:stri
 }
 
 
-export async function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAddress:string){
-    let query = "SELECT COUNT(*) FROM deviceReadings WHERE macAddress = ?"
+export function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAddress:string){
+    let query = "SELECT COUNT(*) FROM deviceReadings WHERE macaddress = ?"
     console.log(query)
     console.log(macAddress)
-    let res = await db.getFirstAsync(query, macAddress)
+    let res = db.getFirstSync(query, macAddress)
     console.log(res)
     if (res == undefined){
         return 0
@@ -96,7 +108,7 @@ export async function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAdd
 }
 
 export async function getDeviceReadings(db:SQLite.SQLiteDatabase, macaddress:string){
-    let query = "SELECT * FROM deviceReadings WHERE macAddress = ?"
+    let query = "SELECT * FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp DESC"
     let output = []
     for await (const reading of db.getEachAsync<DeviceReadingEntity>(query,macaddress)){
         output.push(reading as DeviceReadingEntity)
@@ -158,7 +170,7 @@ export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:Devic
 
 }
 export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, reading:DeviceReadingEntity){
-    let firstHalf = "INSERT INTO deviceReadings ( macAddress, rssi, estimatedDistance"
+    let firstHalf = "INSERT INTO deviceReadings ( macaddress, rssi, estimatedDistance"
     let secondHalf = ") VALUES (?,  ?, ?"
     let args = [reading.macaddress, reading.rssi.toString(), reading.estimatedDistance.toString()]
 
@@ -175,8 +187,8 @@ export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, readi
     let query = firstHalf + secondHalf + ")";
     console.log(query)
     await db.runAsync(query, args)
-    query = "UPDATE device SET lastReading = ? WHERE macaddress = ?"
-    let lastReading = db.getFirstAsync("SELECT timestamp FROM deviceReadings WHERE macAddress = ? ORDER BY timestamp ASC", reading.macaddress) 
+    query = "UPDATE devices SET lastReading = ? WHERE macaddress = ?"
+    let lastReading = db.getFirstAsync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp ASC", reading.macaddress) 
     await db.runAsync(query,lastReading.toString(), reading.macaddress)
 
 
@@ -216,6 +228,7 @@ function sort_device_list(device_list:DeviceEntity[], comp_fn: (a:DeviceEntity, 
 export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=true){
     let device_list :DeviceEntity[]= [];
     for await (const device of getDeviceListIterator(db)){
+        device.numberOfDeviceReadings= getNumberOfDeviceReadings(db,device.macaddress)
         device_list.push(device)
     }
     if(sort_list){
