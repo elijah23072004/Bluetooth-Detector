@@ -23,9 +23,7 @@ export class DeviceEntity{
 export function deviceEntiyToString(device:DeviceEntity){
     let out =device.deviceName + " macaddress:" + device.macaddress  
     if (device.lastReading != undefined){
-        console.log(device.lastReading.valueOf())
-        let date = new Date(device.lastReading)
-        out+=" last reading: " + date.toUTCString()
+        out+=" last reading: " +convertTimestampToDateString(device.lastReading)
     }
     if(device.numberOfDeviceReadings != undefined){
         out += " number of readings:" + device.numberOfDeviceReadings.toString()
@@ -52,8 +50,7 @@ export class DeviceReadingEntity{
 }
 
 export function deviceReadingEntityToString(reading:DeviceReadingEntity): string{
-    let date = new Date(reading.timestamp)
-    return reading.macaddress+" timestamp:" + date.toUTCString() + ":" + "rssi reading:"+reading.rssi.toString()+ " txPower:"+reading.txPower + " estimatedDistance:"+ reading.estimatedDistance.toString() + " serviceInfo:" + reading.serviceInfo
+    return reading.macaddress+" timestamp:" + convertTimestampToDateString(reading.timestamp) + ":" + "rssi reading:"+reading.rssi.toString()+ " txPower:"+reading.txPower + " estimatedDistance:"+ reading.estimatedDistance.toString() + " serviceInfo:" + reading.serviceInfo
 }
 
 
@@ -232,16 +229,17 @@ function compare_device_entites(a:DeviceEntity, b:DeviceEntity):number{
         if(b.lastReading == undefined){
             return 0    
         }
-        return 1
+        return -1
     }
     if (b.lastReading == undefined){
-        return -1    
+        return 1 
     }
     return b.lastReading - a.lastReading
 }
 function sort_device_list(device_list:DeviceEntity[], comp_fn: (a:DeviceEntity, b:DeviceEntity) => number = compare_device_entites){
     let output = device_list 
     output.sort(comp_fn)
+    output.reverse()
     //bubble sort for now
     return output 
 }
@@ -267,4 +265,10 @@ export async function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:s
     let numberOfDeviceReadings = readings.length
     let mostRecentReadingDistance = readings[0].estimatedDistance
     return {device:device,mostRecentReadingTime:mostRecentReadingTime, firstReadingTime:firstReadingTime, numberOfDeviceReadings:numberOfDeviceReadings, mostRecentReadingDistance:mostRecentReadingDistance, serviceInfo:readings[0].serviceInfo}
+}
+
+
+export function convertTimestampToDateString(timestamp:number){
+        let date = new Date(timestamp)
+        return date.toUTCString()
 }
