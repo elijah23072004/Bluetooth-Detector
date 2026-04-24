@@ -36,9 +36,12 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-sqlite",
-        {"enableFTS":false,
-        "useSQLCipher":false}
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": false,
+          "useSQLCipher": false
+        }
       ],
       [
         "expo-splash-screen",
@@ -60,7 +63,8 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

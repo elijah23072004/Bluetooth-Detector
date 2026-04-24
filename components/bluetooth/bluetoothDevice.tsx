@@ -1,5 +1,19 @@
 import { Peripheral } from "react-native-ble-manager";
 
+function median(arr:number[]){
+    var sorted = arr.sort(function (a, b) {
+        return a - b;
+    });
+
+    var length = sorted.length;
+
+    if (length % 2 === 1) {
+        return sorted[(length / 2) - 0.5];
+    } else {
+        return (sorted[length / 2] + sorted[(length / 2) - 1]) / 2;
+    }
+}
+
 var DEFAULT_BLUETOOTH_STRENGTH = 0;
 export class RssiReading{
     rssi:number;
@@ -77,7 +91,7 @@ export class BluetoothDevice {
     getMostRecentRssiReading(){
         return this.rssiHistory[this.rssiHistory.length-1]
     }
-    getRssiDistance(rssi:number,txPowerLevel:number){
+    getRssiDistance(rssi:number,txPowerLevel?:number){
         var MINPOWERLEVEL=-100
         var MAXPOWERLEVEL=100
         var DEFAULTPOWER=-50
@@ -120,6 +134,25 @@ export class BluetoothDevice {
             out+="timeStamp:"+ val.timestamp.toString() + ",rssi:"+val.rssi.toString()+", txPower:"+val.tx_power.toString()+"\n"
         }
         return out
+    }
+    get_average_rssi(){
+        let vals = []
+        for(let val of this.rssiHistory){
+            vals.push(val.rssi)
+        }
+        return median(vals)
+    }
+    get_average_distance(){
+        return this.getRssiDistance(this.get_average_rssi(), this.get_TX_POWER())
+    }
+
+    get_TX_POWER(){
+        for(let val of this.rssiHistory){
+            if(val.tx_power != undefined){
+                return val.tx_power
+            }
+        }
+        return undefined
     }
 }
 
