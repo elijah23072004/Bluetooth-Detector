@@ -47,10 +47,10 @@ import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceTo
 
 const SECONDS_TO_SCAN_FOR = 10;
 const SERVICE_UUIDS: string[] = [];
-const ALLOW_DUPLICATES = true;
+const ALLOW_DUPLICATES = false;
 
 
-async function savePeriphal(peripheral:Peripheral,bluetoothDevices:BluetoothDeviceContainer, db?:SQLite.SQLiteDatabase){
+function savePeriphal(peripheral:Peripheral,bluetoothDevices:BluetoothDeviceContainer, db?:SQLite.SQLiteDatabase){
         if (!peripheral.name) {
             peripheral.name = "NO NAME";
         }
@@ -71,8 +71,8 @@ async function savePeriphal(peripheral:Peripheral,bluetoothDevices:BluetoothDevi
 
         let reading = new DeviceReadingEntity(macaddress, rssiReading.timestamp, rssiReading.rssi, bleDevice.getRecentDistance(), rssiReading.tx_power)
 
-        await saveDeviceToDatabase(dev,db)
-        await saveDeviceReadingToDatabase(reading,db)
+        saveDeviceToDatabase(dev,db)
+        saveDeviceReadingToDatabase(reading,db)
    
 }
 
@@ -118,9 +118,9 @@ async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLi
 
 const BluetoothDemoScreen: React.FC = () => {
     const [isScanning, setIsScanning] = useState(false);
-    const [peripherals, setPeripherals] = useState(
-        new Map
-    );
+//const [peripherals, setPeripherals] = useState<Peripheral[]>(
+//        []
+ //   );
     const [bluetoothDevices, setBluetoothDevices] = useState( 
         new BluetoothDeviceContainer([]))
     const [showUnnamed,setShowUnnamed] = useState(true)
@@ -178,20 +178,21 @@ const BluetoothDemoScreen: React.FC = () => {
 
         let reading = new DeviceReadingEntity(macaddress, rssiReading.timestamp, rssiReading.rssi, bleDevice.getRecentDistance(), rssiReading.tx_power)
 
-        saveDeviceToDatabase(dev,db)
-        saveDeviceReadingToDatabase(reading,db)
+        //saveDeviceToDatabase(dev,db)
+        //saveDeviceReadingToDatabase(reading,db)
 
 
         setBluetoothDevices((container) => {
             container.addDevice(bleDevice)
             return new BluetoothDeviceContainer(container.namedDevices,container.unNamedDevices)
         });
-        setPeripherals((map) => {
-            map.set(peripheral.id, peripheral)
-            return new Map(map)
-        });
+        //setPeripherals((arr) => {
+        //    arr.push(peripheral)
+            //return new Map(map)
+        //    return arr
+        //});
 
-        console.log(peripherals.size)
+        //console.log(peripherals.length)
     };
 
     const handleStopScan = async () => {
@@ -201,10 +202,11 @@ const BluetoothDemoScreen: React.FC = () => {
         setIsScanning(false);
         console.debug("[handleStopScan] scan is stopped.");
         //save found devices 
-        for(let [macAddress,peripheral] of peripherals){ 
+        let peripherals = await BleManager.getDiscoveredPeripherals()
+        for(let peripheral of peripherals){ 
             try{
-                console.log(macAddress)
-                await savePeriphal(peripheral,bluetoothDevices,db) 
+                console.log(peripheral.id)
+                savePeriphal(peripheral,bluetoothDevices,db) 
             } catch (e){
                 console.error(e)
             }
@@ -217,7 +219,7 @@ const BluetoothDemoScreen: React.FC = () => {
         console.log("Peripherals done saving")
     };
     const startScan = async () => {
-        setPeripherals(new Map)
+        //setPeripherals([])
         setBluetoothDevices(new BluetoothDeviceContainer([]))
         if (db == undefined){
             setDB(await getDatabase())    

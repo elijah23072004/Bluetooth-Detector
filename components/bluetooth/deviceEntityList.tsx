@@ -5,6 +5,7 @@ import { ThemedText } from "../themed-text";
 import { useState } from "react";
 import { Button } from "react-native";
 import { DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString } from "@/utils/database";
+import { Link} from "expo-router";
 interface DeviceListProps{
     devices:DeviceEntity[];
 }
@@ -36,6 +37,10 @@ export function DeviceList(props:DeviceListProps){
                 setSelected(selectedId)
                 setSelectedText("")    
             }} title={"Select device"}/>
+                <Link href={{
+                    pathname:'/showDeviceDetails',
+                    params: {macaddress:device.macaddress} 
+                    }} >Show Device Details</Link>
                 {selectedElem}
             </ThemedView>)
         namedDevicesElements.push(view)

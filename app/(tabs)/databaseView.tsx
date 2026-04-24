@@ -64,7 +64,7 @@ const databaseTest = ()  =>{
                 let db = await getDatabase()
                 const randomId = Math.random();
                 let dev = new DeviceEntity(randomId.toString(), "test",undefined, true, undefined) 
-                await addDeviceToDatabase(db, dev)
+                addDeviceToDatabase(db, dev)
                 //setDeviceList("a")
                 db.closeSync()
                 

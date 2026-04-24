@@ -23,6 +23,7 @@ export class DeviceEntity{
 export function deviceEntiyToString(device:DeviceEntity){
     let out =device.deviceName + " macaddress:" + device.macaddress  
     if (device.lastReading != undefined){
+        console.log(device.lastReading.valueOf())
         let date = new Date(device.lastReading)
         out+=" last reading: " + date.toUTCString()
     }
@@ -66,7 +67,13 @@ export async function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
 export async function getDatabase(){
 
     const db = await SQLite.openDatabaseAsync(DB_NAME)
+//{useNewConnection:true})
     await createTablesIfNotExist(db)
+
+    if(db == null){
+        throw "getdatabase returned null which should never happen" 
+    }
+
     return db
 }
 export async function clearDatabase(db:SQLite.SQLiteDatabase){
@@ -80,7 +87,7 @@ export async function deleteDatabase(){
 }
 
 export function getDevice(db:SQLite.SQLiteDatabase, macAddress:string){
-    const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = '?'",macAddress);
+    const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = ?",macAddress);
     if (device){
         device.numberOfDeviceReadings =getNumberOfDeviceReadings(db,device.macaddress)
         return device
@@ -143,7 +150,13 @@ export async function getAllDeviceReadingStrings(devices:DeviceEntity[], db?:SQL
 
 
 
-export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntity){
+export function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntity){
+    if (isMacaddressInDatabase(db,device.macaddress)){
+        console.log(device.macaddress + " already in database")
+        return 
+    }
+    
+
     let firstHalf= "INSERT INTO devices ( macaddress, deviceName"
     let secondHalf = ") VALUES (?, ?"
     let args = [device.macaddress, device.deviceName]
@@ -164,9 +177,15 @@ export async function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:Devic
     }
     let query = firstHalf + secondHalf + ");"
     console.log(query)
+    console.log(args)
     
     //await db.runAsync("INSERT INTO devices (macaddress, deviceName) VALUES (?, ?);",device.macaddress,device.deviceName)
-    await db.runAsync(query, args)
+    try{
+        db.runSync(query, args)
+    }catch(e){
+        console.error(e)
+
+    }
 
 }
 export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, reading:DeviceReadingEntity){
@@ -188,8 +207,9 @@ export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, readi
     console.log(query)
     await db.runAsync(query, args)
     query = "UPDATE devices SET lastReading = ? WHERE macaddress = ?"
-    let lastReading = db.getFirstAsync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp ASC", reading.macaddress) 
-    await db.runAsync(query,lastReading.toString(), reading.macaddress)
+    let lastReading = db.getFirstSync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp ASC", reading.macaddress) 
+    console.log(lastReading.timestamp)
+    db.runSync(query,lastReading.timestamp, reading.macaddress)
 
 
 }
@@ -235,4 +255,16 @@ export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=t
         device_list = sort_device_list(device_list)
     }
     return device_list
+}
+
+
+export async function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:string){
+    let readings = await getDeviceReadings(db,macaddress)
+    let device = getDevice(db,macaddress)
+
+    let mostRecentReadingTime= readings[0].timestamp
+    let firstReadingTime = readings[readings.length-1].timestamp
+    let numberOfDeviceReadings = readings.length
+    let mostRecentReadingDistance = readings[0].estimatedDistance
+    return {device:device,mostRecentReadingTime:mostRecentReadingTime, firstReadingTime:firstReadingTime, numberOfDeviceReadings:numberOfDeviceReadings, mostRecentReadingDistance:mostRecentReadingDistance, serviceInfo:readings[0].serviceInfo}
 }
