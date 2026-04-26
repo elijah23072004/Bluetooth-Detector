@@ -7,35 +7,17 @@ import BleManager, {
 } from "react-native-ble-manager";
 import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
 import * as SQLite from "expo-sqlite"
-import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase,isMacaddressInDatabase}from "@/utils/database"
+import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase}from "@/utils/database"
 
-/*const requestPermissions = async () => {
-    if (Platform.OS === 'android') {
-        // Android 12+ (API 31) requires these
-        if (Platform.Version >= 31) {
-            const granted = await PermissionsAndroid.requestMultiple([
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            ]);
-            return (
-                granted['android.permission.BLUETOOTH_SCAN'] === PermissionsAndroid.RESULTS.GRANTED &&
-                    granted['android.permission.BLUETOOTH_CONNECT'] === PermissionsAndroid.RESULTS.GRANTED
-            );
-        } 
-        // Older Android versions mainly need Location for scanning
-        const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    // iOS permissions are handled by the library/Info.plist
-    return true; 
-};*/
-
+const DEBUGBLE = false 
 const SECONDS_TO_SCAN_FOR = 30;
 const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
+const SLEEPTIME=2000
+function onDiscoverDebug(peripheral:Peripheral){
+    console.log("Discovered periheral:",peripheral)
+    
+}
 
 
 function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase){
@@ -82,6 +64,7 @@ function peripheralArrayToBleContainer(peripherals:Peripheral[]){
 async function handleScannedPeripherals(peripherals:Peripheral[]){
     let db = await getDatabase()
     let bluetoothDevices = peripheralArrayToBleContainer(peripherals)
+    console.log(bluetoothDevices.length(), " scanned devices")
     for(let device of bluetoothDevices.namedDevices){
         saveBleDevice(device,db)
     }
@@ -122,15 +105,18 @@ async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLi
 
 async function initialiseBluetooth(){
     handleAndroidPermissions();
+    //if (!BleManager.isStarted()){
+    console.log(BleManager.isStarted())
     BleManager.start({ showAlert: false })
         .then(() => console.debug("BleManager started."))
         .catch((error: any) =>
         console.error("BeManager could not be started.", error)
     );
+    //}
     const state = await BleManager.checkState();
     console.log(state);
     if (state === "off") {
-    await enableBluetooth();
+        await enableBluetooth();
     }
     
 }
@@ -144,20 +130,41 @@ async function handleFinishedScan(){
 }
 
 export async function runBluetoothScan(){
+
+    let resolver: ( () => void) | null;
+    const promise = new Promise<void>((resolve) => {
+        resolver=resolve;
+    });
+
     await initialiseBluetooth()
     let listeners = []  
+    let finished=false
+    /*let waitForEnded = async () => {
+        while(!finished){
+            await new Promise(r => setTimeout(r,SLEEPTIME))
+            
+        }
+    }*/
+
     let onStopScan = () => { 
         handleFinishedScan()
         for(let listener of listeners){
             listener.remove()
         }
+        finished=true
+        if(resolver){
+            resolver()
+        }
         
     }
     listeners.push( BleManager.onStopScan(onStopScan))
+    if(DEBUGBLE){
+        listeners.push( BleManager.onDiscoverPeripheral(onDiscoverDebug))
+    }
 
     try {
         console.debug("[startScan] starting scan...");
-        BleManager.scan({
+        await BleManager.scan({
             seconds:SECONDS_TO_SCAN_FOR,
             matchMode: BleScanMatchMode.Sticky,
             scanMode: BleScanMode.LowLatency,
@@ -165,13 +172,12 @@ export async function runBluetoothScan(){
             allowDuplicates:ALLOW_DUPLICATES,
             serviceUUIDs:SERVICE_UUIDS,
         })
-        .then(async () => {
-            console.debug("[startScan] scan promise returned successfully.");
-        }).catch((err: any) => {
-            console.error("[startScan] ble scan returned in error", err);
-        });
+        console.debug("[startScan] scan promise returned successfully.");
+        //await waitForEnded()
+        console.log("Scan finished")
     } catch (error) {
         console.error("[startScan] ble scan error thrown", error);
-    }
-       
+    } 
+    await promise
+    console.log("Scan finished")
 }

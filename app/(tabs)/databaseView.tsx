@@ -1,15 +1,17 @@
 import * as SQLite from 'expo-sqlite';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useState } from 'react';
-import { Button } from 'react-native';
+import { useRef, useState } from 'react';
+import { AppState, AppStateStatus, Button } from 'react-native';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { Image } from 'expo-image';
 import { getAllDeviceReadingStrings, getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceList } from '@/utils/database';
-
+import React from 'react'
 import { DeviceList } from '@/components/bluetooth/deviceEntityList'; 
 import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
 import { taskNotEnabledNotifcation } from '@/utils/backgroundTask';
+import { addNotificationReceivedListener } from 'expo-notifications';
+import { useFocusEffect } from 'expo-router';
 
 
 
@@ -37,21 +39,46 @@ const databaseTest = ()  =>{
     const [deviceView, setDeviceView] = useState<DeviceEntity[]>([])
    // const [deviceReadings, setDeviceReadings] = useState<Record<string,string>>({})
     const [firstRun, setFirstRun] = useState<boolean>(true)
+    const appState = useRef(AppState.currentState);
     let getData = async () => {
         let db = await getDatabase()
         let devices = await getDevices(db)
-        //let readings = await getAllDeviceReadingStrings(devices,db) 
         setDeviceView(devices)
-        //setDeviceReadings(readings)
         db.closeSync()
         
     }
     if(firstRun == true){
-
         setFirstRun(false)
         taskNotEnabledNotifcation()
-        getData()
+        //getData()
     }
+    useFocusEffect( React.useCallback( () => { 
+        console.log("Screen got focus")
+        getData()
+    }, [])
+    );
+    React.useEffect(() => {
+        const appStateSubscription = AppState.addEventListener( "change",
+            (nextAppState: AppStateStatus) => {
+            if( appState.current.match(/inactive|background/)&& nextAppState === "active"){
+                //App has come to foreground
+                console.log("App has come to foreground")
+                getData()
+            }
+            if(appState.current.match(/active/) && nextAppState === "background"){
+                console.log("App has gone to the background!")
+            }
+            appState.current = nextAppState
+        })
+        const subscription = addNotificationReceivedListener( notification => {
+            console.log(notification)
+            getData()
+        })
+        return () => {
+            subscription.remove()
+            appStateSubscription.remove()
+        }
+    }, []);
     
 
     return (
@@ -64,15 +91,6 @@ const databaseTest = ()  =>{
             }>
         <ThemedView>
             {IsBackgroundProcessingEnabled()}
-            <Button onPress= { async () => { 
-                let db = await getDatabase()
-                const randomId = Math.random();
-                let dev = new DeviceEntity(randomId.toString(), "test",undefined, true, undefined) 
-                addDeviceToDatabase(db, dev)
-                //setDeviceList("a")
-                db.closeSync()
-                
-            }} title={"Add to db"}/>
             <Button onPress= { async () => {
                 let db = await getDatabase()
                 await clearDatabase(db);

@@ -47,7 +47,8 @@ export function DeviceList(props:DeviceListProps){
     }
     return (
         <ThemedView style={styles.stepContainer}>
-            <ThemedText>Devices</ThemedText>
+
+            <ThemedText>{props.devices.length} Devices Scanned:</ThemedText>
             <ThemedView>
                 {namedDevicesElements}
             </ThemedView>

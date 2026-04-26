@@ -63,6 +63,7 @@ export function BluetoothDeviceList(props:BluetoothDeviceListProps){
     }
     return (
         <ThemedView style={styles.stepContainer}>
+            <ThemedText>{devices.length()} Devices Scanned:</ThemedText>
             <ThemedText>Named Devices</ThemedText>
             <ThemedView>
                 {namedDevicesElements}

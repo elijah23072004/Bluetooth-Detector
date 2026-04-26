@@ -172,6 +172,9 @@ export class BluetoothDeviceContainer{
             namedDevices.forEach((device) => this.addDevice(device))    
         }
     }
+    length(){
+        return this.namedDevices.length + this.unNamedDevices.length
+    }
     insert(index:number,namedDevice:boolean,device:BluetoothDevice){
         if(namedDevice){
         

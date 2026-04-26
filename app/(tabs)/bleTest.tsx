@@ -21,6 +21,8 @@ import { BluetoothDeviceList } from "@/components/bluetooth/bluetoothDeviceList"
 import * as SQLite from "expo-sqlite"
 import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase,isMacaddressInDatabase}from "@/utils/database"
 
+import { triggerTaskTest } from "@/utils/backgroundTask";
+
 /*const requestPermissions = async () => {
     if (Platform.OS === 'android') {
         // Android 12+ (API 31) requires these
@@ -273,6 +275,7 @@ const BluetoothDemoScreen: React.FC = () => {
             <ThemedText type="title">Bluetooth Scanner</ThemedText>
         </ThemedView>
         <ThemedView style={styles.stepContainer}>
+            <Button onPress={() => {triggerTaskTest()}} title="Trigger Background Tasks"/>
             <Button onPress={() => {setBluetoothDevices(new BluetoothDeviceContainer([]))}} title={"Clear Scanned Devices"}/>
             <Button onPress={ () => {setShowUnnamed(!showUnnamed)}} title={"Hide unnamed devices"}/>
             <Button onPress={startScan} title={titleText}/>

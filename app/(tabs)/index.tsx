@@ -6,8 +6,26 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import {Button} from 'react-native'
+import { initializeBackgroundTask, triggerTaskTest } from '@/utils/backgroundTask';
+import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
+import { useEffect } from 'react';
+
+//declare a var to store the resolver function
+let resolver: ( () => void) | null;
+const promise = new Promise<void>((resolve) => {
+    resolver = resolve;
+});
+initializeBackgroundTask(promise)
+
 
 export default function HomeScreen() {
+    if (resolver){
+        useEffect( () => {
+            resolver();
+            console.log("Resolver called")
+        }, []);
+    }
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -22,6 +40,10 @@ export default function HomeScreen() {
         <HelloWave />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
+
+        <Button onPress={() => {triggerTaskTest()}} title="Trigger Background Tasks"/>
+
+        {IsBackgroundProcessingEnabled()}
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
