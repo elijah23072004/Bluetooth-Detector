@@ -3,15 +3,18 @@ import * as Device from 'expo-device'
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
-        shouldPlaySound:false,
-        shouldSetBadge:false,
+        shouldPlaySound:true,
+        shouldSetBadge:true,
         shouldShowBanner: true,
         shouldShowList: true,
     }),
 });
 
 
-export function sendNotification(title:string, body?:string){
+export  async function sendNotification(title:string, body?:string){
+    const res = await Notifications.requestPermissionsAsync();
+    console.log("Permissions reponse:",res)
+    console.log("sending notification:"+title+" body:"+body)
     Notifications.scheduleNotificationAsync({
         content: {
             title: title,

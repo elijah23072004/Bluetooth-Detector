@@ -98,10 +98,10 @@ export function isMacaddressInDatabase(db:SQLite.SQLiteDatabase, macAddress:stri
 
 export function getNumberOfDeviceReadings(db:SQLite.SQLiteDatabase, macAddress:string){
     let query = "SELECT COUNT(*) FROM deviceReadings WHERE macaddress = ?"
-    console.log(query)
-    console.log(macAddress)
+    //console.log(query)
+    //console.log(macAddress)
     let res = db.getFirstSync(query, macAddress)
-    console.log(res)
+    //console.log(res)
     if (res == undefined){
         return 0
     }
@@ -127,8 +127,7 @@ export async function getDeviceReadingsString(macaddress:string, db?:SQLite.SQLi
     let readings = await getDeviceReadings(db,macaddress)
     let out = ""
     for (let reading of readings){
-        console.log(reading)
-        console.log(typeof(reading))
+        //console.log(reading)
         out+= deviceReadingEntityToString(reading)+"\n"
     
     }
@@ -149,7 +148,7 @@ export async function getAllDeviceReadingStrings(devices:DeviceEntity[], db?:SQL
 
 export function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntity){
     if (isMacaddressInDatabase(db,device.macaddress)){
-        console.log(device.macaddress + " already in database")
+        //console.log(device.macaddress + " already in database")
         return 
     }
     
@@ -173,8 +172,8 @@ export function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntit
         args.push(device.deviceType)
     }
     let query = firstHalf + secondHalf + ");"
-    console.log(query)
-    console.log(args)
+    //console.log(query)
+    //console.log(args)
     
     //await db.runAsync("INSERT INTO devices (macaddress, deviceName) VALUES (?, ?);",device.macaddress,device.deviceName)
     try{
@@ -201,11 +200,11 @@ export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, readi
         args.push(reading.serviceInfo)
     }*/
     let query = firstHalf + secondHalf + ")";
-    console.log(query)
+    //console.log(query)
     await db.runAsync(query, args)
     query = "UPDATE devices SET lastReading = ? WHERE macaddress = ?"
     let lastReading = db.getFirstSync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp ASC", reading.macaddress) 
-    console.log(lastReading.timestamp)
+    //console.log(lastReading.timestamp)
     db.runSync(query,lastReading.timestamp, reading.macaddress)
 
 

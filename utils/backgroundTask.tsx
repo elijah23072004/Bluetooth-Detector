@@ -27,13 +27,23 @@ TaskManager.defineTask(BACKGROUND_TASK_IDENTIFIER, async () => {
 
 
 export async function registerBackgroundTaskAsync(){
+    console.log("task enabled")
     return BackgroundTask.registerTaskAsync(BACKGROUND_TASK_IDENTIFIER, {minimumInterval:TASK_FREQUENCY});
 }
 
 export async function unregisterBackgroundTaskAsync(){
+    console.log("task disabled")
     return BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_IDENTIFIER);
 }
 
 export async function isTaskRegistered(){
     return TaskManager.isTaskRegisteredAsync(BACKGROUND_TASK_IDENTIFIER); 
+}
+
+
+export async function taskNotEnabledNotifcation(){
+    if (!(await isTaskRegistered())){
+        sendNotification("Background scanning is not enabled for bluetooth scanner", "please enable background processing in home page of application for bluetooth devices to be scanned")
+        console.log("Notification sent")
+    }
 }

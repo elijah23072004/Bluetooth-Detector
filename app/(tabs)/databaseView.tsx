@@ -8,6 +8,8 @@ import { Image } from 'expo-image';
 import { getAllDeviceReadingStrings, getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceList } from '@/utils/database';
 
 import { DeviceList } from '@/components/bluetooth/deviceEntityList'; 
+import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
+import { taskNotEnabledNotifcation } from '@/utils/backgroundTask';
 
 
 
@@ -39,7 +41,6 @@ const databaseTest = ()  =>{
         let db = await getDatabase()
         let devices = await getDevices(db)
         //let readings = await getAllDeviceReadingStrings(devices,db) 
-        setFirstRun(false)
         setDeviceView(devices)
         //setDeviceReadings(readings)
         db.closeSync()
@@ -47,6 +48,8 @@ const databaseTest = ()  =>{
     }
     if(firstRun == true){
 
+        setFirstRun(false)
+        taskNotEnabledNotifcation()
         getData()
     }
     
@@ -60,6 +63,7 @@ const databaseTest = ()  =>{
                 />
             }>
         <ThemedView>
+            {IsBackgroundProcessingEnabled()}
             <Button onPress= { async () => { 
                 let db = await getDatabase()
                 const randomId = Math.random();
