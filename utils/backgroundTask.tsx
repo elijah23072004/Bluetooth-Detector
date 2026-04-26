@@ -3,27 +3,29 @@ import * as TaskManager from 'expo-task-manager'
 import { runBluetoothScan } from './runBluetoothScanner';
 import { sendNotification } from './notifications';
 import { Background } from '@react-navigation/elements';
-const BACKGROUND_TASK_IDENTIFIER = 'background-bluetooth-scan'
-const TASK_FREQUENCY = 15 //minutes
+const BACKGROUND_TASK_IDENTIFIER = 'background_bluetooth_scan'
+const TASK_FREQUENCY = 1 //minutes
 //const TASK_FREQUENCY = 1
 
 export function initializeBackgroundTask( innerAppMountedPromise : Promise<void>){
 
     TaskManager.defineTask(BACKGROUND_TASK_IDENTIFIER, async () => {
         console.log(new Date(Date.now()).toISOString())
+        let body
         try{
             const now = Date.now();
             console.log(`Got background task call at date: ${ new Date(now).toISOString()}`);
             await innerAppMountedPromise
             console.log("App loaded, scan now starting")
-            await runBluetoothScan()
+            let noScanned = await runBluetoothScan()
+            body=noScanned.toString() + " scanned devices"
         }catch (error) {
             console.error("Failed to execute background task:", error);
             sendNotification("Scan failed:",error.toString())
             return BackgroundTask.BackgroundTaskResult.Failed
         }
         console.log("Background task returned successfully")
-        sendNotification("Scan Complete")
+        sendNotification("Scan Complete",body)
         return BackgroundTask.BackgroundTaskResult.Success
     });
 }
@@ -35,10 +37,10 @@ async function checkBackgroundTaskStatus(){
 
     let res = await BackgroundTask.getStatusAsync()
     if( res==BackgroundTask.BackgroundTaskStatus.Available){
-        console.log("Available")
+        console.log("Background task is Available")
     }
     else if (res == BackgroundTask.BackgroundTaskStatus.Restricted){
-        console.log("Restricted")
+        console.log("Background task is Restricted")
     }
 }
 

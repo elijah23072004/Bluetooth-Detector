@@ -73,6 +73,7 @@ async function handleScannedPeripherals(peripherals:Peripheral[]){
     }
 
     setTimeout( () => {db.closeSync()}, 5000)
+    return bluetoothDevices.length()
 }
 async function enableBluetooth(){
         try {
@@ -125,12 +126,13 @@ async function handleFinishedScan(){
     console.debug("[handleStopScan] scan is stopped.");
     //save found devices 
     let peripherals = await BleManager.getDiscoveredPeripherals()
-    await handleScannedPeripherals(peripherals)
+    let out = await handleScannedPeripherals(peripherals)
     console.log("Peripherals done saving")
+    return out
 }
 
 export async function runBluetoothScan(){
-
+    let noScanned:number = -1;
     let resolver: ( () => void) | null;
     const promise = new Promise<void>((resolve) => {
         resolver=resolve;
@@ -146,8 +148,8 @@ export async function runBluetoothScan(){
         }
     }*/
 
-    let onStopScan = () => { 
-        handleFinishedScan()
+    let onStopScan = async () => { 
+        noScanned =await  handleFinishedScan()
         for(let listener of listeners){
             listener.remove()
         }
@@ -180,4 +182,5 @@ export async function runBluetoothScan(){
     } 
     await promise
     console.log("Scan finished")
+    return noScanned
 }
