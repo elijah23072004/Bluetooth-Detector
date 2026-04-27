@@ -18,7 +18,7 @@ export function initializeBackgroundTask( innerAppMountedPromise : Promise<void>
             await innerAppMountedPromise
             console.log("App loaded, scan now starting")
             let noScanned = await runBluetoothScan()
-            body=noScanned.toString() + " scanned devices"
+            body=noScanned.toString() + " scanned devices. Finished at " + (new Date(now).toISOString())
         }catch (error) {
             console.error("Failed to execute background task:", error);
             sendNotification("Scan failed:",error.toString())

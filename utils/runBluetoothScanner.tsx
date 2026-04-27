@@ -62,7 +62,7 @@ function peripheralArrayToBleContainer(peripherals:Peripheral[]){
 }
 
 async function handleScannedPeripherals(peripherals:Peripheral[]){
-    let db = await getDatabase()
+    let db = getDatabase()
     let bluetoothDevices = peripheralArrayToBleContainer(peripherals)
     console.log(bluetoothDevices.length(), " scanned devices")
     for(let device of bluetoothDevices.namedDevices){
@@ -72,7 +72,6 @@ async function handleScannedPeripherals(peripherals:Peripheral[]){
         saveBleDevice(device,db)
     }
 
-    setTimeout( () => {db.closeSync()}, 5000)
     return bluetoothDevices.length()
 }
 async function enableBluetooth(){
@@ -86,33 +85,27 @@ async function enableBluetooth(){
 }
 async function saveDeviceToDatabase(device:DeviceEntity,db:SQLite.SQLiteDatabase){
     addDeviceToDatabase(db,device)
-
 }
 
 async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLite.SQLiteDatabase){
-    let closeDB=false
     if(db == undefined){
-        closeDB=true
-        db=await getDatabase()    
+        db=getDatabase()    
     }
-        
     await addDeviceReadingToDatabase(db,reading)
-    if(closeDB){
-        db.closeSync()    
-    }
-
 }
 
-
-async function initialiseBluetooth(){
-    handleAndroidPermissions();
-    //if (!BleManager.isStarted()){
-    console.log(BleManager.isStarted())
-    BleManager.start({ showAlert: false })
+export async function startBleManager(){
+    await BleManager.start({ showAlert: false })
         .then(() => console.debug("BleManager started."))
         .catch((error: any) =>
         console.error("BeManager could not be started.", error)
     );
+}
+
+async function initialiseBluetooth(){
+    handleAndroidPermissions();
+    //if (!BleManager.isStarted()){
+    console.log("Blemanager isStarted():",BleManager.isStarted())
     //}
     const state = await BleManager.checkState();
     console.log(state);
@@ -175,8 +168,6 @@ export async function runBluetoothScan(){
             serviceUUIDs:SERVICE_UUIDS,
         })
         console.debug("[startScan] scan promise returned successfully.");
-        //await waitForEnded()
-        console.log("Scan finished")
     } catch (error) {
         console.error("[startScan] ble scan error thrown", error);
     } 

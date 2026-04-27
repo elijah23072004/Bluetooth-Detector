@@ -3,6 +3,7 @@ import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegis
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 const DB_NAME = "bluetoothDeviceReadings"
+const MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK = 2
 export class DeviceEntity{
     macaddress:string;
     deviceName:string;
@@ -17,6 +18,23 @@ export class DeviceEntity{
         this.ignore=ignore
         this.deviceType=deviceType
         this.numberOfDeviceReadings=numberOfDeviceReadings
+    }
+}
+
+export class Database_simplex{
+    static db:SQLite.SQLiteDatabase
+    static get_database(){
+        return Database_simplex.db
+        
+    }
+    static load_database(){
+        const db = SQLite.openDatabaseSync(DB_NAME)
+        //{useNewConnection:true})
+        createTablesIfNotExist(db)
+        if(db == null){
+            throw "getdatabase returned null which should never happen" 
+        }
+        Database_simplex.db = db
     }
 }
 
@@ -55,24 +73,17 @@ export function deviceReadingEntityToString(reading:DeviceReadingEntity): string
 
 
 
-export async function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
+export function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
     let query = "CREATE TABLE IF NOT EXISTS devices (macaddress TEXT PRIMARY KEY, deviceName TEXT NOT NULL, lastReading TIMESTAMP, ignore BOOL, deviceType TEXT);\n"
     query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, macaddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, PRIMARY KEY(timestamp, macaddress), FOREIGN KEY(macaddress) REFERENCES devices(macaddress));"
-    await db.execAsync(query)
+    db.execSync(query)
 }
 
-export async function getDatabase(){
-
-    const db = await SQLite.openDatabaseAsync(DB_NAME)
-//{useNewConnection:true})
-    await createTablesIfNotExist(db)
-
-    if(db == null){
-        throw "getdatabase returned null which should never happen" 
-    }
-
-    return db
+export function getDatabase(){
+    return Database_simplex.get_database()
 }
+
+
 export async function clearDatabase(db:SQLite.SQLiteDatabase){
     //deletes all values in the datbase
     let query = "DELETE from devices;"
@@ -122,7 +133,7 @@ export async function getDeviceReadings(db:SQLite.SQLiteDatabase, macaddress:str
 
 export async function getDeviceReadingsString(macaddress:string, db?:SQLite.SQLiteDatabase){
     if(db==undefined){
-        db=await getDatabase()
+        db=getDatabase()
     }
     let readings = await getDeviceReadings(db,macaddress)
     let out = ""
@@ -135,7 +146,7 @@ export async function getDeviceReadingsString(macaddress:string, db?:SQLite.SQLi
 }
 export async function getAllDeviceReadingStrings(devices:DeviceEntity[], db?:SQLite.SQLiteDatabase){
     if(db==undefined){
-        db=await getDatabase()
+        db=getDatabase()
     }
     let out:Record<string,string> = {}
     for (let device of devices){
@@ -203,7 +214,7 @@ export async function addDeviceReadingToDatabase(db:SQLite.SQLiteDatabase, readi
     //console.log(query)
     await db.runAsync(query, args)
     query = "UPDATE devices SET lastReading = ? WHERE macaddress = ?"
-    let lastReading = db.getFirstSync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp ASC", reading.macaddress) 
+    let lastReading = db.getFirstSync("SELECT timestamp FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp DESC", reading.macaddress) 
     //console.log(lastReading.timestamp)
     db.runSync(query,lastReading.timestamp, reading.macaddress)
 
@@ -270,4 +281,33 @@ export async function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:s
 export function convertTimestampToDateString(timestamp:number){
         let date = new Date(timestamp)
         return date.toUTCString()
+}
+
+export function is_high_risk_device(device:DeviceEntity,db:SQLite.SQLiteDatabase){
+    if(device.numberOfDeviceReadings == undefined){
+        device.numberOfDeviceReadings = getNumberOfDeviceReadings(db,device.macaddress)
+    }
+    if(device.numberOfDeviceReadings != undefined && device.numberOfDeviceReadings > MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK){
+        return true
+    }
+    return false
+}
+
+
+
+export function split_devices_into_high_and_normal_risk(devices:DeviceEntity[]){
+    let high_risk = []
+    let low_risk = []
+    let db = SQLite.openDatabaseSync(DB_NAME)
+    for (let device of devices){
+        if(is_high_risk_device(device,db)){
+            high_risk.push(device)
+        }
+        else{
+            low_risk.push(device)
+        }
+    }
+    return {high_risk:high_risk, low_risk:low_risk};
+    
+    
 }

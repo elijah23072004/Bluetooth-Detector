@@ -19,7 +19,7 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
 import { BluetoothDeviceList } from "@/components/bluetooth/bluetoothDeviceList";
 import * as SQLite from "expo-sqlite"
-import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase,isMacaddressInDatabase}from "@/utils/database"
+import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase,isMacaddressInDatabase, Database_simplex}from "@/utils/database"
 
 import { triggerTaskTest } from "@/utils/backgroundTask";
 
@@ -92,7 +92,7 @@ async function saveDeviceToDatabase(device:DeviceEntity,db?:SQLite.SQLiteDatabas
     let closeDB=false
     if(db == undefined){
         closeDB=true
-        db=await getDatabase()    
+        db=getDatabase()    
     }
     if(!isMacaddressInDatabase(db,device.macaddress)){
         
@@ -105,16 +105,11 @@ async function saveDeviceToDatabase(device:DeviceEntity,db?:SQLite.SQLiteDatabas
 }
 
 async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLite.SQLiteDatabase){
-    let closeDB=false
     if(db == undefined){
-        closeDB=true
-        db=await getDatabase()    
+        db=getDatabase()    
     }
         
     await addDeviceReadingToDatabase(db,reading)
-    if(closeDB){
-        db.closeSync()    
-    }
 
 }
 
@@ -126,7 +121,6 @@ const BluetoothDemoScreen: React.FC = () => {
     const [bluetoothDevices, setBluetoothDevices] = useState( 
         new BluetoothDeviceContainer([]))
     const [showUnnamed,setShowUnnamed] = useState(true)
-    const [db, setDB] = useState<SQLite.SQLiteDatabase>()
     useEffect(() => {
         handleAndroidPermissions();
         //requestPermissions();
@@ -198,9 +192,6 @@ const BluetoothDemoScreen: React.FC = () => {
     };
 
     const handleStopScan = async () => {
-        //if(db == undefined){
-        //    setDB(await getDatabase())
-        //}
         setIsScanning(false);
         console.debug("[handleStopScan] scan is stopped.");
         //save found devices 
@@ -208,7 +199,7 @@ const BluetoothDemoScreen: React.FC = () => {
         for(let peripheral of peripherals){ 
             try{
                 console.log(peripheral.id)
-                savePeriphal(peripheral,bluetoothDevices,db) 
+                savePeriphal(peripheral,bluetoothDevices,getDatabase()) 
             } catch (e){
                 console.error(e)
             }
@@ -219,13 +210,11 @@ const BluetoothDemoScreen: React.FC = () => {
         //    setDB(undefined)
         //}
         console.log("Peripherals done saving")
+        alert("Scan finished")
     };
     const startScan = async () => {
         //setPeripherals([])
         setBluetoothDevices(new BluetoothDeviceContainer([]))
-        if (db == undefined){
-            setDB(await getDatabase())    
-        }
         const state = await BleManager.checkState();
 
         console.log(state);

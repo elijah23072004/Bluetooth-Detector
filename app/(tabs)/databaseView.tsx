@@ -16,15 +16,10 @@ import { useFocusEffect } from 'expo-router';
 
 
 async function getDevices(db?:SQLite.SQLiteDatabase){
-    let closeDb=false
     if(db == undefined){
-        db = await getDatabase() 
-        closeDb=true
+        db = getDatabase() 
     }
     let devices = await getDeviceList(db)
-    if(closeDb){
-        db.closeSync()
-    }
     return devices
 }
 
@@ -41,10 +36,9 @@ const databaseTest = ()  =>{
     const [firstRun, setFirstRun] = useState<boolean>(true)
     const appState = useRef(AppState.currentState);
     let getData = async () => {
-        let db = await getDatabase()
+        let db =getDatabase()
         let devices = await getDevices(db)
         setDeviceView(devices)
-        db.closeSync()
         
     }
     if(firstRun == true){
@@ -92,12 +86,10 @@ const databaseTest = ()  =>{
         <ThemedView>
             {IsBackgroundProcessingEnabled()}
             <Button onPress= { async () => {
-                let db = await getDatabase()
+                let db = getDatabase()
                 await clearDatabase(db);
-                db.closeSync()
             }} title={"Clear db"}/>
             <Button onPress= { () => {
-                    
                 deleteDatabase()
             }} title={"Delete db"}/>
             <DeviceList devices={deviceView} />

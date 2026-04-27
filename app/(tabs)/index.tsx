@@ -10,6 +10,8 @@ import {Button} from 'react-native'
 import { initializeBackgroundTask, triggerTaskTest } from '@/utils/backgroundTask';
 import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
 import { useEffect } from 'react';
+import { Database_simplex } from '@/utils/database';
+import { runBluetoothScan, startBleManager } from '@/utils/runBluetoothScanner';
 
 //declare a var to store the resolver function
 let resolver: ( () => void) | null;
@@ -22,6 +24,8 @@ initializeBackgroundTask(promise)
 export default function HomeScreen() {
     if (resolver){
         useEffect( () => {
+            Database_simplex.load_database()
+            startBleManager()
             resolver();
             console.log("Resolver called")
         }, []);
@@ -44,6 +48,8 @@ export default function HomeScreen() {
         <Button onPress={() => {triggerTaskTest()}} title="Trigger Background Tasks"/>
 
         {IsBackgroundProcessingEnabled()}
+        <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run scan"}/>
+            
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
