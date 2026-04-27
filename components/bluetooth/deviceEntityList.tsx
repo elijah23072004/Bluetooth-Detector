@@ -29,6 +29,25 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean){
     return view
 
 }
+const MINIMUM_NUMBER_OF_DEVICE_READINGS = 2
+function filter_device(device:DeviceEntity){
+    if(device.numberOfDeviceReadings == undefined || device.numberOfDeviceReadings < MINIMUM_NUMBER_OF_DEVICE_READINGS){
+        return true 
+    }
+    return false 
+    
+}
+
+function filter_devices(devices:DeviceEntity[]){
+    let out = []
+    for(let device of devices){
+        if(filter_device(device)){
+            continue
+        }
+        out.push(device)
+    }
+    return out 
+}
 
 export function DeviceList(props:DeviceListProps){
     //stores id of selected device
@@ -38,7 +57,8 @@ export function DeviceList(props:DeviceListProps){
     setSelectedText(await getDeviceReadingsString(macaddress))
     }*/
     let device_elements = []
-    let device_risks  = split_devices_into_high_and_normal_risk(props.devices)
+    let devices = filter_devices(props.devices)
+    let device_risks  = split_devices_into_high_and_normal_risk(devices)
     for(let device of device_risks.high_risk){
         device_elements.push(device_to_view(device,true))
 
@@ -50,7 +70,8 @@ export function DeviceList(props:DeviceListProps){
     return (
         <ThemedView style={styles.stepContainer}>
 
-            <ThemedText>{props.devices.length} Devices Scanned:</ThemedText>
+            <ThemedText>{devices.length} Devices Scanned:</ThemedText>
+            <ThemedText>{device_risks.high_risk.length} High Risk Devices, {device_risks.low_risk.length} Low Risk Devicesi</ThemedText>
             <ThemedView>
                 {device_elements}
             </ThemedView>

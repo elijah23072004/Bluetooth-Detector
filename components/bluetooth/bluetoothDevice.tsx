@@ -69,7 +69,8 @@ export class BluetoothDevice {
         }
         out+= " rssi:"+this.getMostRecentRssiReading().rssi.toString() 
         out+= ", txPower:"+this.getMostRecentRssiReading().tx_power.toString()+ " number of rssi readings:"+this.rssiHistory.length.toString();
-        out+=" distance:"+this.getRecentDistance().toString()
+        //out+=" distance:"+this.getRecentDistance().toString()
+        out+= " average distance:"+ this.get_average_distance().toString()
         //console.log(out);
         return out
     }
@@ -92,16 +93,17 @@ export class BluetoothDevice {
         return this.rssiHistory[this.rssiHistory.length-1]
     }
     getRssiDistance(rssi:number,txPowerLevel?:number){
-        var MINPOWERLEVEL=-100
-        var MAXPOWERLEVEL=100
+
         var DEFAULTPOWER=-50
+        var MINPOWERLEVEL=-100
+        var MAXPOWERLEVEL=30
         let n =2
-
-
         if (txPowerLevel == undefined || txPowerLevel < MINPOWERLEVEL || txPowerLevel > MAXPOWERLEVEL){
             txPowerLevel=DEFAULTPOWER
-
         }
+        return Math.pow(10, -1 * ( ( rssi+ 66.67) / 15.58) )
+
+
         return Math.pow(10,(txPowerLevel-rssi)/(10*n))
     }
 

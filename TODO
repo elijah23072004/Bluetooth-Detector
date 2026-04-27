@@ -1,0 +1,20 @@
+
+allow ignore device, also in view devices a button to view hidden devices
+ 
+
+
+add better device view screen 
+
+show distance 
+
+ui improvements
+
+search for  device in view device screen
+
+impovrements on flagging devices
+
+improvementes on distance algorithm
+(maybe exclude erronous rssi readings)
+or ignore distances over x (e.g. 200m)
+
+

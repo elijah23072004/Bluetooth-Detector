@@ -3,7 +3,7 @@ import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegis
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 const DB_NAME = "bluetoothDeviceReadings"
-const MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK = 2
+const MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK = 5
 export class DeviceEntity{
     macaddress:string;
     deviceName:string;
