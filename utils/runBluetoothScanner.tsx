@@ -7,7 +7,8 @@ import BleManager, {
 } from "react-native-ble-manager";
 import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
 import * as SQLite from "expo-sqlite"
-import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase}from "@/utils/database"
+import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase, is_high_risk_device, getNumberOfDeviceReadings, getDevice}from "@/utils/database"
+import { sendNotification } from "./notifications";
 
 const DEBUGBLE = false 
 const SECONDS_TO_SCAN_FOR = 30;
@@ -19,8 +20,7 @@ function onDiscoverDebug(peripheral:Peripheral){
     
 }
 
-
-function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase){
+function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, timestamp:number){
         if(bleDevice == undefined){
             throw "bleDevice undefined in savePeriphal when should never be undefined"
         }
@@ -29,16 +29,15 @@ function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase){
         if(deviceName == undefined){
             deviceName = "NO NAME"
         }
-        let lastReading=Date.now()
+        let lastReading=timestamp
         let ignore=false
         let deviceType=""
         let dev = new DeviceEntity(macaddress, deviceName, lastReading, ignore, deviceType)
-        let timestamp = Date.now()
 
         let reading = new DeviceReadingEntity(macaddress, timestamp, bleDevice.get_average_rssi(), bleDevice.get_average_distance(), bleDevice.get_TX_POWER())
 
-        saveDeviceToDatabase(dev,db)
-        saveDeviceReadingToDatabase(reading,db)
+        addDeviceToDatabase(db,dev)
+        addDeviceReadingToDatabase(db,reading)
    
 }
 
@@ -61,15 +60,38 @@ function peripheralArrayToBleContainer(peripherals:Peripheral[]){
     
 }
 
+function checkSuspiciousDevice(device:BluetoothDevice){
+    let db = getDatabase()
+    let device_entity = getDevice(db,device.id)
+    if(device_entity == null){
+        console.error("checkSuspiciousDevice got device from database which returned null")
+        return
+    }
+    if(is_high_risk_device(device_entity,db)){
+        let title="Bluetooth scan has found a suspicious device";
+        let body;
+        if(device.name){
+            body= device.name + " has being scanned: " + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
+        }
+        else{
+            body = device.id + " device with no name has being scanned:" + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
+        }
+        sendNotification(title,body)
+    }
+}
+
 async function handleScannedPeripherals(peripherals:Peripheral[]){
     let db = getDatabase()
     let bluetoothDevices = peripheralArrayToBleContainer(peripherals)
     console.log(bluetoothDevices.length(), " scanned devices")
+    let timestamp = Date.now()
     for(let device of bluetoothDevices.namedDevices){
-        saveBleDevice(device,db)
+        saveBleDevice(device,db,timestamp)
+        checkSuspiciousDevice(device)
     }
     for(let device of bluetoothDevices.unNamedDevices){
-        saveBleDevice(device,db)
+        saveBleDevice(device,db,timestamp)
+        checkSuspiciousDevice(device) 
     }
 
     return bluetoothDevices.length()
@@ -82,16 +104,6 @@ async function enableBluetooth(){
             console.error("[enableBluetooth] thrown", error);
         }
 
-}
-async function saveDeviceToDatabase(device:DeviceEntity,db:SQLite.SQLiteDatabase){
-    addDeviceToDatabase(db,device)
-}
-
-async function saveDeviceReadingToDatabase(reading:DeviceReadingEntity, db?:SQLite.SQLiteDatabase){
-    if(db == undefined){
-        db=getDatabase()    
-    }
-    await addDeviceReadingToDatabase(db,reading)
 }
 
 export async function startBleManager(){
@@ -174,4 +186,6 @@ export async function runBluetoothScan(){
     await promise
     console.log("Scan finished")
     return noScanned
+
 }
+
