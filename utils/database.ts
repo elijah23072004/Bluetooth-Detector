@@ -36,6 +36,11 @@ export class Database_simplex{
         }
         Database_simplex.db = db
     }
+    static reload_database(){
+        Database_simplex.db.closeSync()
+        Database_simplex.load_database()
+        console.log("Database reloaded!")
+    }
 }
 
 export function deviceEntiyToString(device:DeviceEntity){
@@ -87,7 +92,9 @@ export function getDatabase(){
 export async function clearDatabase(db:SQLite.SQLiteDatabase){
     //deletes all values in the datbase
     let query = "DELETE from devices;"
+    query +="DELETE from deviceReadings;"
     await db.execAsync(query)
+    console.log("Database cleared")
 }
 export async function deleteDatabase(){
 
@@ -269,7 +276,10 @@ export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=t
 export async function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:string){
     let readings = await getDeviceReadings(db,macaddress)
     let device = getDevice(db,macaddress)
-
+    if(readings.length == 0){
+        console.error("No device readings for macaddress:"+macaddress)
+        throw "Readings array in getDeviceInfomation is empty"
+    }
     let mostRecentReadingTime= readings[0].timestamp
     let firstReadingTime = readings[readings.length-1].timestamp
     let numberOfDeviceReadings = readings.length

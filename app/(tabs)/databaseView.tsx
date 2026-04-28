@@ -85,13 +85,6 @@ const databaseTest = ()  =>{
             }>
         <ThemedView>
             {IsBackgroundProcessingEnabled()}
-            <Button onPress= { async () => {
-                let db = getDatabase()
-                await clearDatabase(db);
-            }} title={"Clear db"}/>
-            <Button onPress= { () => {
-                deleteDatabase()
-            }} title={"Delete db"}/>
             <DeviceList devices={deviceView} />
         </ThemedView>
         </ParallaxScrollView>

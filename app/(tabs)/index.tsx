@@ -5,14 +5,16 @@ import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Link, router, useRouter } from 'expo-router';
 import {Button} from 'react-native'
 import { initializeBackgroundTask, triggerTaskTest } from '@/utils/backgroundTask';
 import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
 import { useEffect } from 'react';
 import { Database_simplex } from '@/utils/database';
 import { runBluetoothScan, startBleManager } from '@/utils/runBluetoothScanner';
-
+import * as Notifications from 'expo-notifications'
+import { Linking } from 'react-native';
+import { getDatabase, deleteDatabase, clearDatabase } from '@/utils/database';
 //declare a var to store the resolver function
 let resolver: ( () => void) | null;
 const promise = new Promise<void>((resolve) => {
@@ -22,12 +24,30 @@ initializeBackgroundTask(promise)
 
 
 export default function HomeScreen() {
-    if (resolver){
-        useEffect( () => {
-            Database_simplex.load_database()
-            startBleManager()
-            resolver();
-            console.log("Resolver called")
+    if(resolver){
+    useEffect( () => {
+        Database_simplex.load_database()
+        const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+            console.log("addNotificationResponseReceivedListener")
+            console.log(response);
+            if(response.notification.request.content.data?.url){
+                const url = response.notification.request.content.data.url;
+                router.replace(url);
+            }
+        });
+        //const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+        //    console.log("addNotificationReceivedListener")
+        //    console.log(notification);
+        //});
+        startBleManager()
+        
+        resolver();
+        
+        console.log("Resolver called")
+        return () => {
+            responseListener.remove()
+            //notificationListener.remove()
+        }
         }, []);
     }
   return (
@@ -49,7 +69,13 @@ export default function HomeScreen() {
 
         {IsBackgroundProcessingEnabled()}
         <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run scan"}/>
-            
+        <Button onPress= { async () => {
+                let db = getDatabase()
+                await clearDatabase(db);
+        }} title={"Clear db"}/>
+        <Button onPress= { () => {
+                deleteDatabase()
+        }} title={"Delete db"}/>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.

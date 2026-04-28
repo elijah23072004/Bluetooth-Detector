@@ -55,6 +55,9 @@ export class BluetoothDevice {
         else if (this.name=="JLab GO Pop+-App"){
             this.userDefinedName="JLab Wireless Earbuds"
         }
+        else if(this.id == "D8:0D:5B:39:59:E0"){
+            this.userDefinedName = "Air Tag"
+        }
     }
     toString(){
         let out = ""
@@ -93,18 +96,23 @@ export class BluetoothDevice {
         return this.rssiHistory[this.rssiHistory.length-1]
     }
     getRssiDistance(rssi:number,txPowerLevel?:number){
+        //var DEFAULTPOWER=-50
+        //var MINPOWERLEVEL=-100
+        //var MAXPOWERLEVEL=30
+        //let n =2
+        //if (txPowerLevel == undefined || txPowerLevel < MINPOWERLEVEL || txPowerLevel > MAXPOWERLEVEL){
+        //    txPowerLevel=DEFAULTPOWER
+        //}
+        //return Math.pow(10, -1 * ( ( rssi+ 66.67) / 15.58) )
+        // 0.00005258 == 10^(-(66.67/15.58)
+        // 0.8627 == 10^(-1/15.58)
+        // therefore the output is a derivation of 10^(-(rssi+66.67)/15.58)
+        // allowing for less computation each iteration since only doing one power then a multiplication
+//
 
-        var DEFAULTPOWER=-50
-        var MINPOWERLEVEL=-100
-        var MAXPOWERLEVEL=30
-        let n =2
-        if (txPowerLevel == undefined || txPowerLevel < MINPOWERLEVEL || txPowerLevel > MAXPOWERLEVEL){
-            txPowerLevel=DEFAULTPOWER
-        }
-        return Math.pow(10, -1 * ( ( rssi+ 66.67) / 15.58) )
+        return 0.00005258 * Math.pow(0.8627,rssi)
 
-
-        return Math.pow(10,(txPowerLevel-rssi)/(10*n))
+        //return Math.pow(10,(txPowerLevel-rssi)/(10*n))
     }
 
     getRecentDistance(decimalPoints:number=2):number{
@@ -189,6 +197,10 @@ export class BluetoothDeviceContainer{
     }
 
     addDevice(device:BluetoothDevice){
+        //will overwrite device if it already exists in database
+        if(this.getDevice(device.id)){
+            console.error("adding device in bluetoothdevice.tsx deviceContainer with id:"+device.id+" already in container so will replace current value")
+        }
         let devices = this.unNamedDevices
         let namedDevice = device.userDefinedName != undefined
         if(namedDevice){

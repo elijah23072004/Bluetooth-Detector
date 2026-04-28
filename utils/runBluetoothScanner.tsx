@@ -15,9 +15,18 @@ const SECONDS_TO_SCAN_FOR = 30;
 const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
 const SLEEPTIME=2000
+const MAXIMUM_DISTANCE = 15
 function onDiscoverDebug(peripheral:Peripheral){
     console.log("Discovered periheral:",peripheral)
     
+}
+
+
+function should_save_device(reading:DeviceReadingEntity){
+    if(reading.estimatedDistance > MAXIMUM_DISTANCE){
+        return false
+    }
+    return true
 }
 
 function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, timestamp:number){
@@ -35,9 +44,19 @@ function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, time
         let dev = new DeviceEntity(macaddress, deviceName, lastReading, ignore, deviceType)
 
         let reading = new DeviceReadingEntity(macaddress, timestamp, bleDevice.get_average_rssi(), bleDevice.get_average_distance(), bleDevice.get_TX_POWER())
-
-        addDeviceToDatabase(db,dev)
-        addDeviceReadingToDatabase(db,reading)
+        if(should_save_device(reading)){
+            try{
+                addDeviceToDatabase(db,dev)
+                addDeviceReadingToDatabase(db,reading)
+            }catch(e){
+                console.error("Error from saveBleDevice:",e)
+            }
+            return true
+        }
+        else{
+            console.log(macaddress+" has to high distance to be counted as nearby object so not saved in database with distance:"+reading.estimatedDistance)
+            return false
+        }
    
 }
 
@@ -64,7 +83,7 @@ function checkSuspiciousDevice(device:BluetoothDevice){
     let db = getDatabase()
     let device_entity = getDevice(db,device.id)
     if(device_entity == null){
-        console.error("checkSuspiciousDevice got device from database which returned null")
+        console.error("checkSuspiciousDevice got device from database which returned null, could be due to device not getting saved from scan")
         return
     }
     if(is_high_risk_device(device_entity,db)){
@@ -76,7 +95,8 @@ function checkSuspiciousDevice(device:BluetoothDevice){
         else{
             body = device.id + " device with no name has being scanned:" + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
         }
-        sendNotification(title,body)
+        let route = "/showDeviceDetails?macaddress='"+device.id+"'"
+        sendNotification(title,body,route)
     }
 }
 
@@ -85,16 +105,21 @@ async function handleScannedPeripherals(peripherals:Peripheral[]){
     let bluetoothDevices = peripheralArrayToBleContainer(peripherals)
     console.log(bluetoothDevices.length(), " scanned devices")
     let timestamp = Date.now()
+    let count=0
     for(let device of bluetoothDevices.namedDevices){
-        saveBleDevice(device,db,timestamp)
-        checkSuspiciousDevice(device)
+        if(saveBleDevice(device,db,timestamp)){
+            checkSuspiciousDevice(device)
+            count+=1
+        }
     }
     for(let device of bluetoothDevices.unNamedDevices){
-        saveBleDevice(device,db,timestamp)
-        checkSuspiciousDevice(device) 
+        if(saveBleDevice(device,db,timestamp)){
+            checkSuspiciousDevice(device) 
+            count+=1
+        }
     }
-
-    return bluetoothDevices.length()
+    console.log((bluetoothDevices.length() - count).toString() + " devices skipped")
+    return count 
 }
 async function enableBluetooth(){
         try {

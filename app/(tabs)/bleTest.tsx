@@ -96,7 +96,7 @@ async function saveDeviceToDatabase(device:DeviceEntity,db?:SQLite.SQLiteDatabas
     }
     if(!isMacaddressInDatabase(db,device.macaddress)){
         
-        await addDeviceToDatabase(db,device)
+        addDeviceToDatabase(db,device)
     }
     if(closeDB){
         db.closeSync()    

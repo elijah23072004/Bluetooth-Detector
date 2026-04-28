@@ -11,14 +11,19 @@ Notifications.setNotificationHandler({
 });
 
 
-export  async function sendNotification(title:string, body?:string){
+export  async function sendNotification(title:string, body?:string,route?:string){
     const res = await Notifications.requestPermissionsAsync();
     console.log("Permissions reponse:",res)
     console.log("sending notification:"+title+" body:"+body)
+    let data:Record<string,string> = {}
+    if (route){
+        data["url"]=route    
+    }
     Notifications.scheduleNotificationAsync({
         content: {
             title: title,
             body: body,
+            data: data
         },
         trigger: null,
     });
