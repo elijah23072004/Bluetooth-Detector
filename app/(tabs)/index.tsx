@@ -32,7 +32,7 @@ export default function HomeScreen() {
             console.log(response);
             if(response.notification.request.content.data?.url){
                 const url = response.notification.request.content.data.url;
-                router.replace(url);
+                router.push(url);
             }
         });
         //const notificationListener = Notifications.addNotificationReceivedListener(notification => {

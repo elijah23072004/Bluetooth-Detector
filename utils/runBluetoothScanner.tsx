@@ -95,7 +95,7 @@ function checkSuspiciousDevice(device:BluetoothDevice){
         else{
             body = device.id + " device with no name has being scanned:" + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
         }
-        let route = "/showDeviceDetails?macaddress='"+device.id+"'"
+        let route = "/showDeviceDetails?macaddress="+device.id
         sendNotification(title,body,route)
     }
 }
