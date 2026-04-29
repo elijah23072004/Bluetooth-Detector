@@ -103,6 +103,7 @@ export async function clearDatabase(db:SQLite.SQLiteDatabase){
     query+="DROP TABLE IF EXISTS devices;"
     await db.execAsync(query)
     console.log("Database cleared")
+    createTablesIfNotExist(db)
 }
 export async function deleteDatabase(){
     getDatabase().closeSync()

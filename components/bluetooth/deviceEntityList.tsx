@@ -3,9 +3,13 @@ import { Pressable, StyleSheet } from "react-native";
 import { ThemedText } from "../themed-text";
 import {router} from 'expo-router'
 import { split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString, get_most_recent_distance } from "@/utils/database";
+import { useState } from "react";
+import {Button} from 'react-native';
 import { useColorScheme } from "react-native";
 import { foregroundStyle, font } from "@expo/ui/swift-ui/modifiers";
 import { Host,Text} from '@expo/ui/swift-ui';
+import { useScrollToTop } from "@react-navigation/native";
+import { setShouldAnimateExitingForTag } from "react-native-reanimated/lib/typescript/core";
 
 interface DeviceListProps{
     devices:DeviceEntity[];
@@ -75,18 +79,18 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorSc
 
 }
 const MINIMUM_NUMBER_OF_DEVICE_READINGS = 2
-function filter_device(device:DeviceEntity){
-    if(device.numberOfDeviceReadings == undefined || device.numberOfDeviceReadings < MINIMUM_NUMBER_OF_DEVICE_READINGS){
+function filter_device(device:DeviceEntity,showHidden:boolean){
+    if(device.ignore == showHidden || device.numberOfDeviceReadings == undefined || device.numberOfDeviceReadings < MINIMUM_NUMBER_OF_DEVICE_READINGS){
         return true 
     }
     return false 
     
 }
 
-function filter_devices(devices:DeviceEntity[]){
+function filter_devices(devices:DeviceEntity[],showHidden:boolean){
     let out = []
     for(let device of devices){
-        if(filter_device(device)){
+        if(filter_device(device, showHidden)){
             continue
         }
         out.push(device)
@@ -95,6 +99,7 @@ function filter_devices(devices:DeviceEntity[]){
 }
 
 export function DeviceList(props:DeviceListProps){
+    const [showHidden, setShowHidden] = useState(false)
     const colorScheme = useColorScheme() ?? 'light';
     //stores id of selected device
     /* const [selected,setSelected] = useState("")
@@ -103,7 +108,7 @@ export function DeviceList(props:DeviceListProps){
     setSelectedText(await getDeviceReadingsString(macaddress))
     }*/
     let device_elements = []
-    let devices = filter_devices(props.devices)
+    let devices = filter_devices(props.devices,showHidden)
     let device_risks  = split_devices_into_high_and_normal_risk(devices)
     for(let device of device_risks.high_risk){
         device_elements.push(device_to_view(device,true,colorScheme))
@@ -115,6 +120,7 @@ export function DeviceList(props:DeviceListProps){
     }
     return (
         <ThemedView style={styles.stepContainer}>
+            <Button onPress={ () => {setShowHidden(!showHidden)}} title={"Show Hidden Devices"}/>
 
             <ThemedText>{devices.length} Devices Scanned:</ThemedText>
             <ThemedText>{device_risks.high_risk.length} High Risk Devices, {device_risks.low_risk.length} Low Risk Devicesi</ThemedText>
