@@ -48,7 +48,7 @@ export function SettingsComponent(){
     return (
         <ThemedView style={styles.container}>
             <View>
-            <IsBackgroundProcessingEnabled/>
+            <IsBackgroundProcessingEnabled onlyShowIfNotEnabled={false}/>
             </View>
             <View>
             <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run scan now"}/>
@@ -57,27 +57,41 @@ export function SettingsComponent(){
             <ThemedTextInput onChange={(event:TextInputChangeEvent) => {
                 let text = event.nativeEvent.text
                 let num = Number(text)
+                if(Number.isNaN(num)){
+                    num=0
+                }
                 setConfigData((prev) => ({...prev, scan_frequency:num}))
             }} placeholder="How often in minutes to scan for bluetooth devices" value={config.scan_frequency.toString()}/>
             <ThemedText type="subtitle"> How long to scan for devices in seconds: </ThemedText>
             <ThemedTextInput value = {config.scan_duration.toString()} onChange={(event:TextInputChangeEvent) => {
                 let text = event.nativeEvent.text
                 let num = Number(text)
-                setConfigData((prev) => ({...prev, scan_frequency:num}))
+                if(Number.isNaN(num)){
+                    num=0
+                }
+                setConfigData((prev) => ({...prev, scan_duration:num}))
             }} placeholder="Scan time for devices in seconds:"/>
             <ThemedText type="subtitle"> Max Scanned Distance to be included in scan: </ThemedText>
             <ThemedTextInput onChange={(event:TextInputChangeEvent) => {
                 let text = event.nativeEvent.text
                 let num = Number(text)
+                if(Number.isNaN(num)){
+                    num=0
+                }
                 setConfigData((prev) => ({...prev, maximum_scan_distance:num}))
-            }} placeholder="Max scanned distance to be included in scan:" value={config.scan_frequency.toString()}/>
+            }} placeholder="Max scanned distance to be included in scan:" value={config.maximum_scan_distance.toString()}/>
             <ThemedText type="subtitle"> Minimum number of times a device is scanned to be flagged as a suspicious device: </ThemedText>
-            <ThemedTextInput value = {config.scan_duration.toString()} onChange={(event:TextInputChangeEvent) => {
+            <ThemedTextInput value = {config.threshold_for_suspicius_device.toString()} onChange={(event:TextInputChangeEvent) => {
                 let text = event.nativeEvent.text
                 let num = Number(text)
+                if(Number.isNaN(num)){
+                    num=0
+                }
                 setConfigData((prev) => ({...prev, threshold_for_suspicius_device:num}))
             }} placeholder="Minimum number of times a device is scanned to be flagged as a suspicious device:"/>
-            <ThemedButton onPress={() =>saveConfigData(configData)} color='#841584' title='Save Settings'/>
+            <ThemedButton onPress={() =>{saveConfigData(configData)
+                alert("Settings Saved")    
+            }} color='#841584' title='Save Settings'/>
             <Button onPress= { async () => {
                 showConfirmDialiog()
             }} title={"Clear db"}/>

@@ -125,10 +125,10 @@ function checkSuspiciousDevice(device:BluetoothDevice, threshold_for_suspicius_d
         let title="Bluetooth scan has found a suspicious device";
         let body;
         if(device_entity.deviceName){
-            body= device_entity.deviceName+ " has being scanned: " + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
+            body= device_entity.deviceName+ " has being scanned: " + device_entity.numberOfDeviceReadings?.toString() + " times in the 5 days"
         }
         else{
-            body = device.id + " device with no name has being scanned:" + device_entity.numberOfDeviceReadings?.toString() + " times in the last 24 hours"
+            body = device.id + " device with no name has being scanned:" + device_entity.numberOfDeviceReadings?.toString() + " times in the 5 days"
         }
         let route = "/showDeviceDetails?macaddress="+device.id
         sendNotification(title,body,route)
@@ -175,7 +175,7 @@ export async function startBleManager(){
 }
 
 async function initialiseBluetooth(){
-    handleAndroidPermissions();
+    await handleAndroidPermissions();
     //if (!BleManager.isStarted()){
     console.log("Blemanager isStarted():",BleManager.isStarted())
     //}
