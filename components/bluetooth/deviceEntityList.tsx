@@ -1,30 +1,75 @@
-import { BluetoothDevice,BluetoothDeviceContainer,RssiReading } from "@/components/bluetooth/bluetoothDevice";
 import { ThemedView } from "../themed-view";
-import { StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { ThemedText } from "../themed-text";
-import { useState } from "react";
 import {router} from 'expo-router'
-import { Button } from "react-native";
-import { split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString } from "@/utils/database";
+import { split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString, get_most_recent_distance } from "@/utils/database";
+import { useColorScheme } from "react-native";
+import { foregroundStyle, font } from "@expo/ui/swift-ui/modifiers";
+import { Host,Text} from '@expo/ui/swift-ui';
 
-import { Link} from "expo-router";
 interface DeviceListProps{
     devices:DeviceEntity[];
 }
+function get_device_view_styles(colorScheme:string){
+    let backgroundColor
+    let border_color
+    const colors = {light: '#A1CEDC', dark: '#1D3D47' }
+    if (colorScheme == "light"){
+        backgroundColor = colors.light
+        border_color = colors.dark
+    }
+    else{
+        backgroundColor = colors.dark
+        border_color = colors.light
+    }
 
-function device_to_view(device:DeviceEntity, is_high_risk_device:boolean){
-    let view = (<ThemedView key={device.macaddress}>
-        <ThemedText>{deviceEntiyToString(device)}</ThemedText>
-        <Button onPress={ () => router.push(
-            {pathname:'/showDeviceDetails', 
-            params:{macaddress:device.macaddress}}
-        )}
-        title="Show Device Details"/>
+    const device_stylesheet = StyleSheet.create({
+        container: {
+        flex: 1,
+        backgroundColor:backgroundColor,
+        borderColor: border_color,
+        borderWidth: 5,
+        padding:10,
+        margin:5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign:'center',
+    }})
+    return device_stylesheet
+}
+function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorScheme:string){
+    let device_stylesheet = get_device_view_styles(colorScheme)
+    let name = device.deviceName
+    if(name == undefined || name==""){
+        name="Unknown Name"
+    }
+    let distance = device.distance
+    if(distance != undefined){
+        distance = Math.round(distance*100)/100
+    }
+    else{
+        distance=50
+    }
 
-        <Link href={{
-        pathname:'/showDeviceDetails',
-        params: {macaddress:device.macaddress} 
-        }} >Show Device Details</Link>
+    if(device.distance == undefined){
+        console.log("device.distance undefined so fetching it again:"+device.macaddress)
+        distance = get_most_recent_distance(getDatabase(),device.macaddress)
+    }
+    let manufacturerComp
+    if(device.manufacturerKey){
+        manufacturerComp=(<ThemedText style={{textAlign:"center"}}>{device.manufacturerKey}</ThemedText>)
+        console.log(device.manufacturerKey)
+        
+    }
+    let view = (
+        <ThemedView key={device.macaddress} style={device_stylesheet.container}>
+        <Pressable onPress={() => router.push({ pathname:'/showDeviceDetails', params:{macaddress:device.macaddress}} ) }>
+        <ThemedText style={{textAlign:"center",fontSize:20, fontWeight:'bold'}}>{name}</ThemedText>
+        {manufacturerComp}
+        <ThemedText style={{textAlign:"center"}}>{distance?.toString()} m</ThemedText>
+        <ThemedText style={{textAlign:"center"}}>{device.numberOfDeviceReadings} Times Scanned</ThemedText>
+        <ThemedText style={{textAlign:"center", fontSize:14,fontWeight:"200"}}>{device.macaddress}</ThemedText>
+        </Pressable>
         </ThemedView>)
     return view
 
@@ -50,6 +95,7 @@ function filter_devices(devices:DeviceEntity[]){
 }
 
 export function DeviceList(props:DeviceListProps){
+    const colorScheme = useColorScheme() ?? 'light';
     //stores id of selected device
     /* const [selected,setSelected] = useState("")
     const [selectedText, setSelectedText] = useState("")
@@ -60,11 +106,11 @@ export function DeviceList(props:DeviceListProps){
     let devices = filter_devices(props.devices)
     let device_risks  = split_devices_into_high_and_normal_risk(devices)
     for(let device of device_risks.high_risk){
-        device_elements.push(device_to_view(device,true))
+        device_elements.push(device_to_view(device,true,colorScheme))
 
     }
     for(let device of device_risks.low_risk){
-        device_elements.push(device_to_view(device,false))
+        device_elements.push(device_to_view(device,false,colorScheme))
 
     }
     return (

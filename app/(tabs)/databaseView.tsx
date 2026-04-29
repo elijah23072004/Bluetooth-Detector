@@ -3,8 +3,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useRef, useState } from 'react';
 import { AppState, AppStateStatus, Button } from 'react-native';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { Image } from 'expo-image';
 import { getAllDeviceReadingStrings, getNumberOfDeviceReadings, DeviceEntity, addDeviceToDatabase, getDatabase, clearDatabase, deleteDatabase, getDeviceList } from '@/utils/database';
 import React from 'react'
 import { DeviceList } from '@/components/bluetooth/deviceEntityList'; 
@@ -12,6 +10,7 @@ import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBack
 import { taskNotEnabledNotifcation } from '@/utils/backgroundTask';
 import { addNotificationReceivedListener } from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
+import TabScrollView from '@/components/tab-scroll-view';
 
 
 
@@ -76,18 +75,14 @@ const databaseTest = ()  =>{
     
 
     return (
-        <ParallaxScrollView
+        <TabScrollView
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-            headerImage={ 
-                <Image
-                    source={require('@/assets/images/partial-react-logo.png')}
-                />
-            }>
+            >
         <ThemedView>
             {IsBackgroundProcessingEnabled()}
             <DeviceList devices={deviceView} />
         </ThemedView>
-        </ParallaxScrollView>
+        </TabScrollView>
     )
 //<ThemedText>{ deviceList } </ThemedText>
 }

@@ -11,13 +11,16 @@ export class DeviceEntity{
     ignore?:boolean;
     deviceType?:string;
     numberOfDeviceReadings?:number;
-    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string, numberOfDeviceReadings?:number){
+    distance?:number;
+    manufacturerKey?:string
+    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string, numberOfDeviceReadings?:number,manufacturerKey?:string){
         this.macaddress=macaddress
         this.deviceName=deviceName
         this.lastReading=lastReading
         this.ignore=ignore
         this.deviceType=deviceType
         this.numberOfDeviceReadings=numberOfDeviceReadings
+        this.manufacturerKey=manufacturerKey
     }
 }
 
@@ -37,8 +40,11 @@ export class Database_simplex{
         Database_simplex.db = db
     }
     static reload_database(){
+        try{
         Database_simplex.db.closeSync()
-        Database_simplex.load_database()
+        }finally{
+            Database_simplex.load_database()
+        }
         console.log("Database reloaded!")
     }
 }
@@ -79,7 +85,7 @@ export function deviceReadingEntityToString(reading:DeviceReadingEntity): string
 
 
 export function createTablesIfNotExist(db:SQLite.SQLiteDatabase){
-    let query = "CREATE TABLE IF NOT EXISTS devices (macaddress TEXT PRIMARY KEY, deviceName TEXT NOT NULL, lastReading TIMESTAMP, ignore BOOL, deviceType TEXT);\n"
+    let query = "CREATE TABLE IF NOT EXISTS devices (macaddress TEXT PRIMARY KEY, deviceName TEXT NOT NULL, lastReading TIMESTAMP, ignore BOOL, deviceType TEXT, manufacturerKey TEXT);\n"
     query +=  "CREATE TABLE IF NOT EXISTS deviceReadings ( timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, macaddress TEXT NOT NULL, rssi FLOAT NOT NULL, txPower INT, ServiceInfo TEXT, estimatedDistance FLOAT, PRIMARY KEY(timestamp, macaddress), FOREIGN KEY(macaddress) REFERENCES devices(macaddress));"
     db.execSync(query)
 }
@@ -91,20 +97,24 @@ export function getDatabase(){
 
 export async function clearDatabase(db:SQLite.SQLiteDatabase){
     //deletes all values in the datbase
-    let query = "DELETE from devices;"
-    query +="DELETE from deviceReadings;"
+    //let query = "DELETE from devices;"
+    //query +="DELETE from deviceReadings;"
+    let query = "DROP TABLE IF EXISTS deviceReadings;"
+    query+="DROP TABLE IF EXISTS devices;"
     await db.execAsync(query)
     console.log("Database cleared")
 }
 export async function deleteDatabase(){
-
+    getDatabase().closeSync()
     SQLite.deleteDatabaseSync(DB_NAME)
 }
 
 export function getDevice(db:SQLite.SQLiteDatabase, macAddress:string){
     const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = ?",macAddress);
+    console.log(device?.manufacturerKey)
     if (device){
         device.numberOfDeviceReadings =getNumberOfDeviceReadings(db,device.macaddress)
+        device.distance = get_most_recent_distance(db,device.macaddress)
         return device
     }
     return null
@@ -174,10 +184,16 @@ export function addDeviceToDatabase(db:SQLite.SQLiteDatabase, device:DeviceEntit
     let firstHalf= "INSERT INTO devices ( macaddress, deviceName"
     let secondHalf = ") VALUES (?, ?"
     let args = [device.macaddress, device.deviceName]
+    console.log(device.manufacturerKey)
     if(device.lastReading != undefined){
         secondHalf+=", ?"
         firstHalf+=", lastReading"
         args.push(device.lastReading.toString())
+    }
+    if(device.manufacturerKey != undefined){
+        secondHalf+=", ?"
+        firstHalf+=", manufacturerKey"
+        args.push(device.manufacturerKey)
     }
     if(device.ignore != undefined){
         secondHalf+=", ?"
@@ -264,6 +280,8 @@ export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=t
     let device_list :DeviceEntity[]= [];
     for await (const device of getDeviceListIterator(db)){
         device.numberOfDeviceReadings= getNumberOfDeviceReadings(db,device.macaddress)
+        device.distance = get_most_recent_distance(db,device.macaddress)
+        console.log(device.manufacturerKey)
         device_list.push(device)
     }
     if(sort_list){
@@ -320,4 +338,20 @@ export function split_devices_into_high_and_normal_risk(devices:DeviceEntity[]){
     return {high_risk:high_risk, low_risk:low_risk};
     
     
+}
+
+
+export function get_most_recent_reading(db:SQLite.SQLiteDatabase, macaddress:string){
+    let query = "SELECT * FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp DESC"
+    
+
+    let res = db.getFirstSync<DeviceReadingEntity>(query, macaddress)
+    return res
+
+
+}
+
+export function get_most_recent_distance(db:SQLite.SQLiteDatabase, macaddress:string){
+    let reading = get_most_recent_reading(db,macaddress)
+    return reading?.estimatedDistance 
 }

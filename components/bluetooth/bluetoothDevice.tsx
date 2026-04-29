@@ -43,12 +43,15 @@ export class BluetoothDevice {
     id: string;
     name?: string;
     userDefinedName?:string;
+    manufacturerKey?:string;
     rssiHistory:RssiReading[];
-    constructor(id:string,name:string,rssiHistory:RssiReading[], userDefinedName?:string){
+    
+    constructor(id:string,name:string,rssiHistory:RssiReading[], manufacturerKey?:string , userDefinedName?:string){
         this.id=id
         this.name=name
         this.rssiHistory = rssiHistory
         this.userDefinedName=userDefinedName;
+        this.manufacturerKey=manufacturerKey
         if(this.name == "WH-CH720N"){
             this.userDefinedName="Sony headphones"
         }
@@ -171,7 +174,6 @@ export class BluetoothDeviceContainer{
     namedDevices:BluetoothDevice[];
     unNamedDevices:BluetoothDevice[];
     constructor(namedDevices:BluetoothDevice[],unNamedDevices?:BluetoothDevice[]){
-
         if(unNamedDevices != undefined){
             this.namedDevices=namedDevices
             this.unNamedDevices=unNamedDevices

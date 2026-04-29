@@ -24,6 +24,7 @@ initializeBackgroundTask(promise)
 
 
 export default function HomeScreen() {
+    Database_simplex.reload_database()
     if(resolver){
     useEffect( () => {
         Database_simplex.load_database()

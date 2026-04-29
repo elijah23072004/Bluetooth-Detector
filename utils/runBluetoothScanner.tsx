@@ -10,12 +10,18 @@ import * as SQLite from "expo-sqlite"
 import {addDeviceReadingToDatabase, DeviceEntity,DeviceReadingEntity,addDeviceToDatabase,getDatabase, is_high_risk_device, getNumberOfDeviceReadings, getDevice}from "@/utils/database"
 import { sendNotification } from "./notifications";
 
+
+import company_identifiers from '@/assets/company_identifiers.json'
+
+
 const DEBUGBLE = false 
 const SECONDS_TO_SCAN_FOR = 30;
 const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
 const SLEEPTIME=2000
 const MAXIMUM_DISTANCE = 15
+
+
 function onDiscoverDebug(peripheral:Peripheral){
     console.log("Discovered periheral:",peripheral)
     
@@ -41,7 +47,9 @@ function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, time
         let lastReading=timestamp
         let ignore=false
         let deviceType=""
-        let dev = new DeviceEntity(macaddress, deviceName, lastReading, ignore, deviceType)
+        let manufacturerKey = bleDevice.manufacturerKey
+        let dev = new DeviceEntity(macaddress, deviceName, lastReading, ignore, deviceType,0,manufacturerKey)
+        console.log("device entity:",dev.manufacturerKey,"bleDevice:",bleDevice.manufacturerKey)
 
         let reading = new DeviceReadingEntity(macaddress, timestamp, bleDevice.get_average_rssi(), bleDevice.get_average_distance(), bleDevice.get_TX_POWER())
         if(should_save_device(reading)){
@@ -63,13 +71,33 @@ function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, time
 function peripheralArrayToBleContainer(peripherals:Peripheral[]){
     let bluetoothDevices = new BluetoothDeviceContainer([])
     for(let peripheral of peripherals){
+        console.log("Peripheral advertisiing name same as reg name:",peripheral.advertising.localName == peripheral.name)
+        console.log("Entire peripheral:",peripheral)
+        console.log("manufacturerData:",peripheral.advertising.manufacturerData)
+        let manufacturerData = peripheral.advertising.manufacturerData
+        let manufacturer 
+        if(manufacturerData){
+            let manufacturerKey = Number("0x"+(Object.keys(manufacturerData))[0])
+            if( !Number.isFinite(manufacturerKey) || manufacturerKey == undefined || manufacturerKey < 0 || manufacturerKey > company_identifiers.company_identifiers.length){
+                console.log("manufacturerKey of:"+manufacturerKey+" not in json file")
+            }
+            else{
+                console.log(manufacturerKey)
+                if(company_identifiers.company_identifiers[manufacturerKey].value != manufacturerKey){
+                    console.log("Item at index:"+manufacturerKey.toString() + " not equal to value:"+company_identifiers.company_identifiers[manufacturerKey].value.toString())
+                }
+                manufacturer=company_identifiers.company_identifiers[manufacturerKey].name
+            }
+            console.log("Manufacturer:",manufacturer)
+        }
+
         let bleDevice = bluetoothDevices.getDevice(peripheral.id) 
         let name = peripheral.name
         if (bleDevice == undefined){
             if(name == undefined){
                 name=""
             }
-            bleDevice = new BluetoothDevice(peripheral.id,name, [])
+            bleDevice = new BluetoothDevice(peripheral.id,name,[],manufacturer)
         }
         let rssiReading = RssiReading.peripheralToRssiReading(peripheral)
         bleDevice.addRssiReading(rssiReading)
