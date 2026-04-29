@@ -81,10 +81,9 @@ const databaseTest = ()  =>{
         <ThemedView>
             <IsBackgroundProcessingEnabled onlyShowIfNotEnabled={true}/>
             <ThemedText> Currently there are no devices saved in the database</ThemedText>
-            <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run bluetooth scan now"}/>
-
-
-
+            <Button onPress={ async () => {
+                alert("Started Scan")
+                alert((await runBluetoothScan()).toString() + " Scanned Devices")}} title={"Run bluetooth scan now"}/>
         </ThemedView>
         </TabScrollView>
     )

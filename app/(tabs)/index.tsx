@@ -24,7 +24,6 @@ initializeBackgroundTask(promise)
 
 
 export default function HomeScreen() {
-    Database_simplex.reload_database()
     if(resolver){
     useEffect( () => {
         Database_simplex.load_database()
@@ -72,7 +71,10 @@ export default function HomeScreen() {
 
         <Button onPress= { () => router.push("./Scanned Devices")} title={"View Devices in database"}/>
         <Button onPress= { () => router.push("./Settings")} title={"Settings"}/>
-        <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run bluetooth scan now"}/>
+        <Button onPress={ async () => {
+            alert("Started Scan")
+            alert((await runBluetoothScan()).toString() + " Scanned Devices")    
+    }} title={"Run bluetooth scan now"}/>
 
 
     </ThemedView>
