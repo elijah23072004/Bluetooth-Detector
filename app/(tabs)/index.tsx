@@ -10,7 +10,7 @@ import {Button} from 'react-native'
 import { initializeBackgroundTask, triggerTaskTest } from '@/utils/backgroundTask';
 import { IsBackgroundProcessingEnabled } from '@/components/bluetooth/enableBackgroundScanning';
 import { useEffect } from 'react';
-import { Database_simplex } from '@/utils/database';
+import { Database_simplex, exportDatabase, importDatabase } from '@/utils/database';
 import { runBluetoothScan, startBleManager } from '@/utils/runBluetoothScanner';
 import * as Notifications from 'expo-notifications'
 import { Linking } from 'react-native';
@@ -61,65 +61,21 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+        <ThemedText type="title">Bluetooth Scanner</ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
+        <ThemedText> An app which automatically scans for nearby bluetooth devices.</ThemedText>
+        <ThemedText> Which will warn a user if specific devices are repeatedly found. </ThemedText>
+        <ThemedText>With the intention of finding unauthorised item finder devices such as airtags, used to facilitate harasment or coercive control</ThemedText>
+        <ThemedText> The app will scan devices automatically and these devices can be viewed in teh scanned device tab on the bottom of the screen</ThemedText>
+        <ThemedText> The devices in this screen can be pressed to go to a more detailed page which can allow for scanning just for that device to help try to find the device</ThemedText>
+
+        <Button onPress= { () => router.push("./Scanned Devices")} title={"View Devices in database"}/>
+        <Button onPress= { () => router.push("./Settings")} title={"Settings"}/>
+        <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run bluetooth scan now"}/>
 
 
-        <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run scan"}/>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
+    </ThemedView>
     </ParallaxScrollView>
   );
 }

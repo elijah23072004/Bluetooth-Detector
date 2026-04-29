@@ -3,6 +3,7 @@ import { deviceName } from "expo-device";
 import * as SQLite from "expo-sqlite"
 import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegistry";
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
+import {Directory, File, Paths} from 'expo-file-system';
 
 const DB_NAME = "bluetoothDeviceReadings"
 export class DeviceEntity{
@@ -14,8 +15,9 @@ export class DeviceEntity{
     numberOfDeviceReadings?:number;
     distance?:number;
     manufacturerKey?:string
-    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string, numberOfDeviceReadings?:number,manufacturerKey?:string){
+    constructor(macaddress:string, deviceName:string, lastReading?:number, ignore?:boolean, deviceType?:string, numberOfDeviceReadings?:number,manufacturerKey?:string,distance?:number){
         this.macaddress=macaddress
+        this.distance=distance
         this.deviceName=deviceName
         this.lastReading=lastReading
         if(ignore != undefined){
@@ -35,7 +37,7 @@ export class DeviceEntity{
     }
 }
 function copy_device(device:DeviceEntity){
-    return new DeviceEntity(device.macaddress, device.deviceName, device.lastReading, device.ignore, device.deviceType, device.numberOfDeviceReadings, device.manufacturerKey)
+    return new DeviceEntity(device.macaddress, device.deviceName, device.lastReading, device.ignore, device.deviceType, device.numberOfDeviceReadings, device.manufacturerKey,device.distance)
 }
 export class Database_simplex{
     static db:SQLite.SQLiteDatabase
@@ -282,7 +284,7 @@ export function getDeviceListIterator(db:SQLite.SQLiteDatabase){
     return db.getEachAsync<DeviceEntity>(query)
 
 }
-function compare_device_entites(a:DeviceEntity, b:DeviceEntity):number{
+function most_recent_compare(a:DeviceEntity, b:DeviceEntity):number{
     if (a.lastReading == undefined){
         if(b.lastReading == undefined){
             return 0    
@@ -292,15 +294,70 @@ function compare_device_entites(a:DeviceEntity, b:DeviceEntity):number{
     if (b.lastReading == undefined){
         return 1 
     }
-    return b.lastReading - a.lastReading
+    let aTime = a.lastReading
+    if(typeof(aTime) == "string"){
+        aTime = (new Date(aTime)).getTime()
+    }
+    let bTime = b.lastReading
+    if(typeof(bTime) == "string"){
+        bTime = (new Date(bTime)).getTime()
+    }
+    return aTime - bTime
 }
-function sort_device_list(device_list:DeviceEntity[], comp_fn: (a:DeviceEntity, b:DeviceEntity) => number = compare_device_entites){
+
+function frequency_compare(a:DeviceEntity, b:DeviceEntity):number{
+    if (a.numberOfDeviceReadings== undefined){
+        if(b.numberOfDeviceReadings== undefined){
+            return 0    
+        }
+        return -1
+    }
+    if (b.numberOfDeviceReadings== undefined){
+        return 1 
+    }
+    return a.numberOfDeviceReadings- b.numberOfDeviceReadings
+}
+
+
+function distance_compare(a:DeviceEntity, b:DeviceEntity):number{
+    if (a.distance== undefined){
+        if(b.distance== undefined){
+            return 0    
+        }
+        return -1
+    }
+    if (b.distance== undefined){
+        return 1 
+    }
+    return b.distance- a.distance
+}
+
+
+
+
+
+function sort_device_list(device_list:DeviceEntity[], comp_fn: (a:DeviceEntity, b:DeviceEntity) => number = most_recent_compare){
     let output = device_list 
     output.sort(comp_fn)
     output.reverse()
     //bubble sort for now
     return output 
 }
+
+export function sort_devices(device_list:DeviceEntity[], sort_by:string){
+    let comp_fn    
+    if(sort_by == "Time"){
+        comp_fn = most_recent_compare
+    }
+    else if (sort_by == "Frequency"){
+       comp_fn=frequency_compare 
+    }
+    else{
+        comp_fn=distance_compare
+    }
+    return sort_device_list(device_list,comp_fn) 
+}
+
 export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=true){
     let device_list :DeviceEntity[]= [];
     for await (const device of getDeviceListIterator(db)){

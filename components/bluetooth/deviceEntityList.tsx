@@ -2,7 +2,8 @@ import { ThemedView } from "../themed-view";
 import { Pressable, StyleSheet } from "react-native";
 import { ThemedText } from "../themed-text";
 import {router} from 'expo-router'
-import { split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString, get_most_recent_distance } from "@/utils/database";
+import { sort_devices, split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString, get_most_recent_distance } from "@/utils/database";
+import DropDownPicker from 'react-native-dropdown-picker'
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
 import {Button} from 'react-native';
@@ -58,15 +59,14 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorSc
     }
 
     if(device.distance == undefined){
-        console.log("device.distance undefined so fetching it again:"+device.macaddress)
         distance = get_most_recent_distance(getDatabase(),device.macaddress)
     }
     let manufacturerComp
     if(device.manufacturerKey){
         manufacturerComp=(<ThemedText style={{textAlign:"center"}}>{device.manufacturerKey}</ThemedText>)
-        console.log(device.manufacturerKey)
         
     }
+    
     let view = (
         <ThemedView key={device.macaddress} style={device_stylesheet.container}>
         <Pressable onPress={() => router.push({ pathname:'/showDeviceDetails', params:{macaddress:device.macaddress}} ) }>
@@ -75,6 +75,7 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorSc
         <ThemedText style={{textAlign:"center"}}>{distance?.toString()} m</ThemedText>
         <ThemedText style={{textAlign:"center"}}>{device.numberOfDeviceReadings} Times Scanned</ThemedText>
         <ThemedText style={{textAlign:"center", fontSize:14,fontWeight:"200"}}>{device.macaddress}</ThemedText>
+        <ThemedText style={{textAlign:"center", fontSize:14, fontWeight:"100"}}>Last Scanned {(new Date(device.lastReading).toUTCString())}</ThemedText>
         </Pressable>
         </ThemedView>)
     return view
@@ -100,7 +101,6 @@ function filter_device(device:DeviceEntity,showHidden:boolean){
 }
 
 function filter_devices(devices:DeviceEntity[],showHidden:boolean){
-    console.log(showHidden)
     let out = []
     for(let device of devices){
         if(filter_device(device, showHidden)){
@@ -113,7 +113,8 @@ function filter_devices(devices:DeviceEntity[],showHidden:boolean){
 
 export function DeviceList(props:DeviceListProps){
     const [showHidden, setShowHidden] = useState(false)
-    const [ sortBy , setSortBy] = useState("time")
+    const [open, setOpen] = useState(false)
+    const [ sortBy , setSortBy] = useState("Time")
     const colorScheme = useColorScheme() ?? 'light';
     //stores id of selected device
     /* const [selected,setSelected] = useState("")
@@ -122,11 +123,11 @@ export function DeviceList(props:DeviceListProps){
     setSelectedText(await getDeviceReadingsString(macaddress))
     }*/
     let device_elements = []
-
-    let devices = filter_devices(props.devices,showHidden)
+    let devices = sort_devices(props.devices,sortBy)
+    devices = filter_devices(devices,showHidden)
     let device_risks  = split_devices_into_high_and_normal_risk(devices)
     if(device_risks.high_risk.length!=0){
-        device_elements.push( ( <ThemedView><ThemedText>{device_risks.high_risk.length} High Risk Devices</ThemedText></ThemedView>))
+        device_elements.push( ( <ThemedView key="high risk heading"><ThemedText>{device_risks.high_risk.length} High Risk Devices</ThemedText></ThemedView>))
     }
     else{
          device_elements.push( ( <ThemedView key="high risk heading"><ThemedText>No High Risk Devices Found</ThemedText></ThemedView>))
@@ -143,23 +144,28 @@ export function DeviceList(props:DeviceListProps){
         device_elements.push(device_to_view(device,false,colorScheme))
 
     }
-    let hiddenButtonText = "Show Hidden Devies"
+    let hiddenButtonText = "Show Hidden\n Devies"
     if(showHidden){
-        hiddenButtonText="Hide Hidden Devices"
+        hiddenButtonText="Hide Hidden\n Devices"
     }
+    let data = [ { value: "Time" , label:'Time of Scan'}, 
+        { value: "Frequency", label:"Number of Times Scanned"}, 
+        { value:"Distance", label: "Distance of Last Scan"}]
+
     return (
         <ThemedView style={styles.stepContainer}>
             <ThemedView style={styles.fixToText}>
-                <Button title="Sort By"/>
-                <Picker 
-                    selectedValue={sortBy}
-                    onValueChange={(itemValue, itemIndex) => 
-                        setSortBy(itemValue)
-                    }>
-                <Picker.Item label="Time of Scan" value="Time"/>
-                <Picker.Item label="Number of times scanned" value="Frequency"/>
-                <Picker.Item label="Distance of most recent scan" value="Distance"/>
-                </Picker>
+                <ThemedView>
+                <DropDownPicker
+                    value= {sortBy}
+                    items = { data}
+                    setValue={setSortBy}
+                    setOpen={setOpen}
+                    open={open}
+                    placeholder="Select order to sort"
+                    listMode="SCROLLVIEW"
+                    style={{borderColor:'#ccc', width:"65%"}}/>
+                </ThemedView>
                 <Button onPress={ () => {setShowHidden(!showHidden)}} title={hiddenButtonText}/>
             </ThemedView>
 
@@ -176,7 +182,6 @@ export function DeviceList(props:DeviceListProps){
 const styles = StyleSheet.create({
 fixToText:{
 flexDirection: 'row',
-justifyContent: 'space-between',
 },
 titleContainer: {
 flexDirection: 'row',

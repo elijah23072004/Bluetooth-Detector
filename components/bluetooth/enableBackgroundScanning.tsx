@@ -5,7 +5,11 @@ import { ThemedView } from '../themed-view';
 import {Button} from 'react-native'
 import { ThemedText } from '../themed-text';
 
-export const IsBackgroundProcessingEnabled: React.FC = ()=> {
+export class IsBackgroundProcessingEnabledProps {
+    onlyShowIfNotEnabled:boolean = false
+}
+
+export const IsBackgroundProcessingEnabled: React.FC<IsBackgroundProcessingEnabledProps> = (props:IsBackgroundProcessingEnabledProps)=> {
     const [isScanningEnabled,setIsScanningEnabled] = useState(false)
     useEffect(() => {
         isTaskRegistered().then( res => { setIsScanningEnabled(res)})
@@ -14,7 +18,9 @@ export const IsBackgroundProcessingEnabled: React.FC = ()=> {
     if (isScanningEnabled){
         text = "Automatic background scanning of devices is enabled:\npress to disable"
     }
-    
+    if( props.onlyShowIfNotEnabled && isScanningEnabled){
+        return
+    }
     return  ( <ThemedView>
             <Button onPress={async() => {
                 if (isScanningEnabled){

@@ -20,11 +20,11 @@ export function initializeBackgroundTask( innerAppMountedPromise : Promise<void>
             body=noScanned.toString() + " scanned devices. Finished at " + (new Date(now).toISOString())
         }catch (error) {
             console.error("Failed to execute background task:", error);
-            sendNotification("Scan failed:",error.toString())
+            //sendNotification("Scan failed:",error.toString())
             return BackgroundTask.BackgroundTaskResult.Failed
         }
         console.log("Background task returned successfully")
-        sendNotification("Scan Complete",body)
+        //sendNotification("Scan Complete",body)
         return BackgroundTask.BackgroundTaskResult.Success
     });
 }

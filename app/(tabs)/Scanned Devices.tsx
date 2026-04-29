@@ -11,6 +11,7 @@ import { taskNotEnabledNotifcation } from '@/utils/backgroundTask';
 import { addNotificationReceivedListener } from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
 import TabScrollView from '@/components/tab-scroll-view';
+import { runBluetoothScan } from '@/utils/runBluetoothScanner';
 
 
 
@@ -72,14 +73,29 @@ const databaseTest = ()  =>{
             appStateSubscription.remove()
         }
     }, []);
-    
+    if(deviceView.length == 0){
+        return (
+        <TabScrollView
+            headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
+            >
+        <ThemedView>
+            <IsBackgroundProcessingEnabled onlyShowIfNotEnabled={true}/>
+            <ThemedText> Currently there are no devices saved in the database</ThemedText>
+            <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run bluetooth scan now"}/>
+
+
+
+        </ThemedView>
+        </TabScrollView>
+    )
+    }
 
     return (
         <TabScrollView
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
             >
         <ThemedView>
-            <IsBackgroundProcessingEnabled/>
+            <IsBackgroundProcessingEnabled onlyShowIfNotEnabled={true}/>
             <DeviceList devices={deviceView} />
         </ThemedView>
         </TabScrollView>
