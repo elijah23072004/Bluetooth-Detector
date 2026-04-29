@@ -1,9 +1,9 @@
+import { readConfigFromFile } from "@/components/utils";
 import * as SQLite from "expo-sqlite"
 import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegistry";
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 const DB_NAME = "bluetoothDeviceReadings"
-const MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK = 5
 export class DeviceEntity{
     macaddress:string;
     deviceName:string;
@@ -312,11 +312,11 @@ export function convertTimestampToDateString(timestamp:number){
         return date.toUTCString()
 }
 
-export function is_high_risk_device(device:DeviceEntity,db:SQLite.SQLiteDatabase){
+export function is_high_risk_device(device:DeviceEntity,db:SQLite.SQLiteDatabase,threshold_for_suspicious_device:number ){
     if(device.numberOfDeviceReadings == undefined){
         device.numberOfDeviceReadings = getNumberOfDeviceReadings(db,device.macaddress)
     }
-    if(device.numberOfDeviceReadings != undefined && device.numberOfDeviceReadings > MINIMUM_NUMBER_OF_SCANS_TO_BE_HIGH_RISK){
+    if(device.numberOfDeviceReadings != undefined && device.numberOfDeviceReadings > threshold_for_suspicious_device){
         return true
     }
     return false
@@ -328,8 +328,9 @@ export function split_devices_into_high_and_normal_risk(devices:DeviceEntity[]){
     let high_risk = []
     let low_risk = []
     let db = SQLite.openDatabaseSync(DB_NAME)
+    let config = readConfigFromFile()
     for (let device of devices){
-        if(is_high_risk_device(device,db)){
+        if(is_high_risk_device(device,db,config.threshold_for_suspicius_device)){
             high_risk.push(device)
         }
         else{

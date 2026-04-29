@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from "react-native";
 import { ThemedText } from "../themed-text";
 import {router} from 'expo-router'
 import { split_devices_into_high_and_normal_risk, DeviceEntity, deviceEntiyToString, DeviceReadingEntity, getDatabase, getDeviceList, getDeviceReadingsString, get_most_recent_distance } from "@/utils/database";
+import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
 import {Button} from 'react-native';
 import { useColorScheme } from "react-native";
@@ -38,7 +39,8 @@ function get_device_view_styles(colorScheme:string){
         alignItems: 'center',
         justifyContent: 'center',
         textAlign:'center',
-    }})
+    },
+    })
     return device_stylesheet
 }
 function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorScheme:string){
@@ -78,9 +80,19 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorSc
     return view
 
 }
-const MINIMUM_NUMBER_OF_DEVICE_READINGS = 2
+const MINIMUM_NUMBER_OF_DEVICE_READINGS =2
 function filter_device(device:DeviceEntity,showHidden:boolean){
-    if(device.ignore == showHidden || device.numberOfDeviceReadings == undefined || device.numberOfDeviceReadings < MINIMUM_NUMBER_OF_DEVICE_READINGS){
+    if(showHidden){
+        if(!device.ignore){
+            return true
+        }
+    }
+    else{
+        if(device.ignore){
+            return true
+        }
+    }
+    if( device.numberOfDeviceReadings == undefined || device.numberOfDeviceReadings < MINIMUM_NUMBER_OF_DEVICE_READINGS) {
         return true 
     }
     return false 
@@ -88,6 +100,7 @@ function filter_device(device:DeviceEntity,showHidden:boolean){
 }
 
 function filter_devices(devices:DeviceEntity[],showHidden:boolean){
+    console.log(showHidden)
     let out = []
     for(let device of devices){
         if(filter_device(device, showHidden)){
@@ -108,22 +121,43 @@ export function DeviceList(props:DeviceListProps){
     setSelectedText(await getDeviceReadingsString(macaddress))
     }*/
     let device_elements = []
+
     let devices = filter_devices(props.devices,showHidden)
     let device_risks  = split_devices_into_high_and_normal_risk(devices)
+    if(device_risks.high_risk.length!=0){
+        device_elements.push( ( <ThemedView><ThemedText>{device_risks.high_risk.length} High Risk Devices</ThemedText></ThemedView>))
+    }
+    else{
+         device_elements.push( ( <ThemedView key="high risk heading"><ThemedText>No High Risk Devices Found</ThemedText></ThemedView>))
+    }
     for(let device of device_risks.high_risk){
         device_elements.push(device_to_view(device,true,colorScheme))
 
     }
+    if(device_risks.low_risk.length !=0){
+        device_elements.push( ( <ThemedView key="low risk heading"><ThemedText>{device_risks.low_risk.length} Low Risk Devices</ThemedText></ThemedView>))
+    }
+    
     for(let device of device_risks.low_risk){
         device_elements.push(device_to_view(device,false,colorScheme))
 
     }
     return (
         <ThemedView style={styles.stepContainer}>
-            <Button onPress={ () => {setShowHidden(!showHidden)}} title={"Show Hidden Devices"}/>
+            <ThemedView style={styles.fixToText}>
+                <Button title="Sort By"/>
+                <Picker 
+                    selectedValue{sortBy}
+                    onValueChange={(itemValue, itemIndex) => 
+                        setSortBy(itemValue)
+                    }>
+                <Picker.Item label="Time of Scan" value="Time"/>
+                <Picker.Item label="Number of times scanned" value="Frequency"/>
+                <Picker.Item label="Distance of most recent scan" value="Distance"/>
+                </Picker>
+                <Button onPress={ () => {setShowHidden(!showHidden)}} title={"Show Hidden Devices"}/>
+            </ThemedView>
 
-            <ThemedText>{devices.length} Devices Scanned:</ThemedText>
-            <ThemedText>{device_risks.high_risk.length} High Risk Devices, {device_risks.low_risk.length} Low Risk Devicesi</ThemedText>
             <ThemedView>
                 {device_elements}
             </ThemedView>
@@ -135,6 +169,10 @@ export function DeviceList(props:DeviceListProps){
 
 
 const styles = StyleSheet.create({
+fixToText:{
+flexDirection: 'row',
+justifyContent: 'space-between',
+},
 titleContainer: {
 flexDirection: 'row',
 alignItems: 'center',

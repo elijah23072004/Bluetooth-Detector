@@ -3,9 +3,8 @@ import * as TaskManager from 'expo-task-manager'
 import { runBluetoothScan } from './runBluetoothScanner';
 import { sendNotification } from './notifications';
 import { Background } from '@react-navigation/elements';
+import { readConfigFromFile } from '@/components/utils';
 const BACKGROUND_TASK_IDENTIFIER = 'background_bluetooth_scan'
-const TASK_FREQUENCY = 1 //minutes
-//const TASK_FREQUENCY = 1
 
 export function initializeBackgroundTask( innerAppMountedPromise : Promise<void>){
 
@@ -47,7 +46,7 @@ async function checkBackgroundTaskStatus(){
 export async function registerBackgroundTaskAsync(){
     
     console.log("task enabled")
-    return BackgroundTask.registerTaskAsync(BACKGROUND_TASK_IDENTIFIER,{minimumInterval:TASK_FREQUENCY});
+    return BackgroundTask.registerTaskAsync(BACKGROUND_TASK_IDENTIFIER,{minimumInterval:readConfigFromFile().scan_frequency});
 }
 
 export async function unregisterBackgroundTaskAsync(){

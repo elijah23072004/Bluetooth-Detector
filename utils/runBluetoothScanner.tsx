@@ -12,14 +12,15 @@ import { sendNotification } from "./notifications";
 
 
 import company_identifiers from '@/assets/company_identifiers.json'
+import { maybeAddSuffix } from "react-native-reanimated/lib/typescript/common";
+import { ConfigData, readConfigFromFile } from "@/components/utils";
 
 
 const DEBUGBLE = false 
-const SECONDS_TO_SCAN_FOR = 30;
 const SERVICE_UUIDS: string[] = [];
 const ALLOW_DUPLICATES = true;
 const SLEEPTIME=2000
-const MAXIMUM_DISTANCE = 15
+
 
 
 function onDiscoverDebug(peripheral:Peripheral){
@@ -28,14 +29,14 @@ function onDiscoverDebug(peripheral:Peripheral){
 }
 
 
-function should_save_device(reading:DeviceReadingEntity){
-    if(reading.estimatedDistance > MAXIMUM_DISTANCE){
+function should_save_device(reading:DeviceReadingEntity, max_distance:number){
+    if(reading.estimatedDistance > max_distance){
         return false
     }
     return true
 }
 
-function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, timestamp:number){
+function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, timestamp:number,max_distance:number){
         if(bleDevice == undefined){
             throw "bleDevice undefined in savePeriphal when should never be undefined"
         }
@@ -52,7 +53,7 @@ function saveBleDevice(bleDevice:BluetoothDevice, db:SQLite.SQLiteDatabase, time
         console.log("device entity:",dev.manufacturerKey,"bleDevice:",bleDevice.manufacturerKey)
 
         let reading = new DeviceReadingEntity(macaddress, timestamp, bleDevice.get_average_rssi(), bleDevice.get_average_distance(), bleDevice.get_TX_POWER())
-        if(should_save_device(reading)){
+        if(should_save_device(reading,max_distance)){
             try{
                 addDeviceToDatabase(db,dev)
                 addDeviceReadingToDatabase(db,reading)
@@ -107,14 +108,14 @@ function peripheralArrayToBleContainer(peripherals:Peripheral[]){
     
 }
 
-function checkSuspiciousDevice(device:BluetoothDevice){
+function checkSuspiciousDevice(device:BluetoothDevice, threshold_for_suspicius_device:number){
     let db = getDatabase()
     let device_entity = getDevice(db,device.id)
     if(device_entity == null){
         console.error("checkSuspiciousDevice got device from database which returned null, could be due to device not getting saved from scan")
         return
     }
-    if(is_high_risk_device(device_entity,db)){
+    if(is_high_risk_device(device_entity,db,threshold_for_suspicius_device)){
         let title="Bluetooth scan has found a suspicious device";
         let body;
         if(device.name){
@@ -128,21 +129,21 @@ function checkSuspiciousDevice(device:BluetoothDevice){
     }
 }
 
-async function handleScannedPeripherals(peripherals:Peripheral[]){
+async function handleScannedPeripherals(peripherals:Peripheral[],config:ConfigData){
     let db = getDatabase()
     let bluetoothDevices = peripheralArrayToBleContainer(peripherals)
     console.log(bluetoothDevices.length(), " scanned devices")
     let timestamp = Date.now()
     let count=0
     for(let device of bluetoothDevices.namedDevices){
-        if(saveBleDevice(device,db,timestamp)){
-            checkSuspiciousDevice(device)
+        if(saveBleDevice(device,db,timestamp,config.maximum_scan_distance)){
+            checkSuspiciousDevice(device,config.threshold_for_suspicius_device)
             count+=1
         }
     }
     for(let device of bluetoothDevices.unNamedDevices){
-        if(saveBleDevice(device,db,timestamp)){
-            checkSuspiciousDevice(device) 
+        if(saveBleDevice(device,db,timestamp,config.maximum_scan_distance)){
+            checkSuspiciousDevice(device,config.threshold_for_suspicius_device) 
             count+=1
         }
     }
@@ -180,17 +181,18 @@ async function initialiseBluetooth(){
     
 }
 
-async function handleFinishedScan(){
+async function handleFinishedScan(config:ConfigData){
     console.debug("[handleStopScan] scan is stopped.");
     //save found devices 
     let peripherals = await BleManager.getDiscoveredPeripherals()
-    let out = await handleScannedPeripherals(peripherals)
+    let out = await handleScannedPeripherals(peripherals,config)
     console.log("Peripherals done saving")
     return out
 }
 
 export async function runBluetoothScan(){
     let noScanned:number = -1;
+    let config = readConfigFromFile()
     let resolver: ( () => void) | null;
     const promise = new Promise<void>((resolve) => {
         resolver=resolve;
@@ -207,7 +209,7 @@ export async function runBluetoothScan(){
     }*/
 
     let onStopScan = async () => { 
-        noScanned =await  handleFinishedScan()
+        noScanned =await  handleFinishedScan(config)
         for(let listener of listeners){
             listener.remove()
         }
@@ -225,7 +227,7 @@ export async function runBluetoothScan(){
     try {
         console.debug("[startScan] starting scan...");
         await BleManager.scan({
-            seconds:SECONDS_TO_SCAN_FOR,
+            seconds:config.scan_duration,
             matchMode: BleScanMatchMode.Sticky,
             scanMode: BleScanMode.LowLatency,
             callbackType: BleScanCallbackType.AllMatches,

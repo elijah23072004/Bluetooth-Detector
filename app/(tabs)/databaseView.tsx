@@ -79,7 +79,7 @@ const databaseTest = ()  =>{
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
             >
         <ThemedView>
-            {IsBackgroundProcessingEnabled()}
+            <IsBackgroundProcessingEnabled/>
             <DeviceList devices={deviceView} />
         </ThemedView>
         </TabScrollView>
