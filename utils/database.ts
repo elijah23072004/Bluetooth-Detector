@@ -1,4 +1,5 @@
 import { readConfigFromFile } from "@/components/utils";
+import { deviceName } from "expo-device";
 import * as SQLite from "expo-sqlite"
 import { get } from "react-native/Libraries/NativeComponent/NativeComponentRegistry";
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
@@ -8,7 +9,7 @@ export class DeviceEntity{
     macaddress:string;
     deviceName:string;
     lastReading?:number;
-    ignore?:boolean;
+    ignore:boolean=false;
     deviceType?:string;
     numberOfDeviceReadings?:number;
     distance?:number;
@@ -17,13 +18,25 @@ export class DeviceEntity{
         this.macaddress=macaddress
         this.deviceName=deviceName
         this.lastReading=lastReading
-        this.ignore=ignore
+        if(ignore != undefined){
+            this.ignore=ignore
+        }
         this.deviceType=deviceType
         this.numberOfDeviceReadings=numberOfDeviceReadings
         this.manufacturerKey=manufacturerKey
     }
+    ignoreDevice(){
+    
+        if(this.ignore == undefined){
+            return false;
+        }
+        let ig:boolean = this.ignore
+        return !ig 
+    }
 }
-
+function copy_device(device:DeviceEntity){
+    return new DeviceEntity(device.macaddress, device.deviceName, device.lastReading, device.ignore, device.deviceType, device.numberOfDeviceReadings, device.manufacturerKey)
+}
 export class Database_simplex{
     static db:SQLite.SQLiteDatabase
     static get_database(){
@@ -114,9 +127,10 @@ export function getDevice(db:SQLite.SQLiteDatabase, macAddress:string){
     const device = db.getFirstSync<DeviceEntity>("SELECT * FROM devices WHERE macaddress = ?",macAddress);
     console.log(device?.manufacturerKey)
     if (device){
+        
         device.numberOfDeviceReadings =getNumberOfDeviceReadings(db,device.macaddress)
         device.distance = get_most_recent_distance(db,device.macaddress)
-        return device
+        return copy_device(device)
     }
     return null
 }
@@ -293,7 +307,7 @@ export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=t
         device.numberOfDeviceReadings= getNumberOfDeviceReadings(db,device.macaddress)
         device.distance = get_most_recent_distance(db,device.macaddress)
         console.log(device.manufacturerKey)
-        device_list.push(device)
+        device_list.push(copy_device(device))
     }
     if(sort_list){
         device_list = sort_device_list(device_list)
@@ -377,3 +391,4 @@ export function updateDeviceName(db:SQLite.SQLiteDatabase, macaddress:string, de
     db.runSync(query,deviceName, macaddress)
  
 }
+
