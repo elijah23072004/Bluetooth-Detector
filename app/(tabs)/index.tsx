@@ -66,17 +66,8 @@ export default function HomeScreen() {
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
 
-        <Button onPress={() => {triggerTaskTest()}} title="Trigger Background Tasks"/>
 
-        {IsBackgroundProcessingEnabled()}
         <Button onPress={ async () => alert((await runBluetoothScan()).toString() + " Scanned Devices")} title={"Run scan"}/>
-        <Button onPress= { async () => {
-                let db = getDatabase()
-                await clearDatabase(db);
-        }} title={"Clear db"}/>
-        <Button onPress= { () => {
-                deleteDatabase()
-        }} title={"Delete db"}/>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
