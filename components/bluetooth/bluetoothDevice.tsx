@@ -119,7 +119,12 @@ export class BluetoothDevice {
     }
 
     getRecentDistance(decimalPoints:number=2):number{
-        var SAMPLESIZE=25
+        let rssi = this.getRecentRssi()
+        return Number(this.getRssiDistance(rssi,this.getMostRecentRssiReading().tx_power).toFixed(decimalPoints))
+        
+    }
+    getRecentRssi(){
+        var SAMPLESIZE=5
         let noSamples =0
         let rssiSum=0
         for(let i=0; i<this.rssiHistory.length && i<SAMPLESIZE;i++){
@@ -128,8 +133,7 @@ export class BluetoothDevice {
             noSamples++
         }
         let rssiAvg = rssiSum/noSamples
-        return Number(this.getRssiDistance(rssiAvg,this.getMostRecentRssiReading().tx_power).toFixed(decimalPoints))
-        
+        return rssiAvg
     }
 
     comp(device:BluetoothDevice){

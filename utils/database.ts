@@ -149,6 +149,16 @@ export async function getDeviceReadings(db:SQLite.SQLiteDatabase, macaddress:str
     return output
 }
 
+export function getDeviceReadingsSync(db:SQLite.SQLiteDatabase, macaddress:string){
+    let query = "SELECT * FROM deviceReadings WHERE macaddress = ? ORDER BY timestamp DESC"
+    let output = []
+    for (const reading of db.getEachSync<DeviceReadingEntity>(query,macaddress)){
+        output.push(reading as DeviceReadingEntity)
+    }
+    return output
+
+}
+
 export async function getDeviceReadingsString(macaddress:string, db?:SQLite.SQLiteDatabase){
     if(db==undefined){
         db=getDatabase()
@@ -292,8 +302,8 @@ export async function getDeviceList(db:SQLite.SQLiteDatabase,sort_list:boolean=t
 }
 
 
-export async function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:string){
-    let readings = await getDeviceReadings(db,macaddress)
+export function getDeviceInfomation(db:SQLite.SQLiteDatabase, macaddress:string){
+    let readings = getDeviceReadingsSync(db,macaddress)
     let device = getDevice(db,macaddress)
     if(readings.length == 0){
         console.error("No device readings for macaddress:"+macaddress)
@@ -356,4 +366,14 @@ export function get_most_recent_reading(db:SQLite.SQLiteDatabase, macaddress:str
 export function get_most_recent_distance(db:SQLite.SQLiteDatabase, macaddress:string){
     let reading = get_most_recent_reading(db,macaddress)
     return reading?.estimatedDistance 
+}
+export function updateIgnoreDevice(db:SQLite.SQLiteDatabase, macaddress:string, ignore:boolean){
+    let query = "UPDATE devices SET ignore= ? WHERE macaddress = ?"
+    db.runSync(query,ignore, macaddress)
+}
+
+export function updateDeviceName(db:SQLite.SQLiteDatabase, macaddress:string, deviceName:string){
+    let query = "UPDATE devices SET deviceName= ? WHERE macaddress = ?"
+    db.runSync(query,deviceName, macaddress)
+ 
 }

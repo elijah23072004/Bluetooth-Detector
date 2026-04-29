@@ -82,7 +82,7 @@ function device_to_view(device:DeviceEntity, is_high_risk_device:boolean,colorSc
 }
 const MINIMUM_NUMBER_OF_DEVICE_READINGS =2
 function filter_device(device:DeviceEntity,showHidden:boolean){
-    if(showHidden){
+    if(!showHidden){
         if(!device.ignore){
             return true
         }
@@ -113,6 +113,7 @@ function filter_devices(devices:DeviceEntity[],showHidden:boolean){
 
 export function DeviceList(props:DeviceListProps){
     const [showHidden, setShowHidden] = useState(false)
+    const [ sortBy , setSortBy] = useState("time")
     const colorScheme = useColorScheme() ?? 'light';
     //stores id of selected device
     /* const [selected,setSelected] = useState("")
@@ -142,12 +143,16 @@ export function DeviceList(props:DeviceListProps){
         device_elements.push(device_to_view(device,false,colorScheme))
 
     }
+    let hiddenButtonText = "Show Hidden Devies"
+    if(showHidden){
+        hiddenButtonText="Hide Hidden Devices"
+    }
     return (
         <ThemedView style={styles.stepContainer}>
             <ThemedView style={styles.fixToText}>
                 <Button title="Sort By"/>
                 <Picker 
-                    selectedValue{sortBy}
+                    selectedValue={sortBy}
                     onValueChange={(itemValue, itemIndex) => 
                         setSortBy(itemValue)
                     }>
@@ -155,7 +160,7 @@ export function DeviceList(props:DeviceListProps){
                 <Picker.Item label="Number of times scanned" value="Frequency"/>
                 <Picker.Item label="Distance of most recent scan" value="Distance"/>
                 </Picker>
-                <Button onPress={ () => {setShowHidden(!showHidden)}} title={"Show Hidden Devices"}/>
+                <Button onPress={ () => {setShowHidden(!showHidden)}} title={hiddenButtonText}/>
             </ThemedView>
 
             <ThemedView>

@@ -111,6 +111,10 @@ function peripheralArrayToBleContainer(peripherals:Peripheral[]){
 function checkSuspiciousDevice(device:BluetoothDevice, threshold_for_suspicius_device:number){
     let db = getDatabase()
     let device_entity = getDevice(db,device.id)
+    if(device_entity?.ignore){
+        console.log("suspicious device with name:"+device.name+ " and macaddress:"+device.id+" is ignored")
+        return
+    }
     if(device_entity == null){
         console.error("checkSuspiciousDevice got device from database which returned null, could be due to device not getting saved from scan")
         return
