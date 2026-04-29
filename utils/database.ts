@@ -46,6 +46,9 @@ export class Database_simplex{
         
     }
     static load_database(){
+        if(Database_simplex.db != undefined){
+            return
+        }
         const db = SQLite.openDatabaseSync(DB_NAME)
         //{useNewConnection:true})
         createTablesIfNotExist(db)
