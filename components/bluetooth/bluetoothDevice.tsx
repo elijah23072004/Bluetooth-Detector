@@ -52,15 +52,6 @@ export class BluetoothDevice {
         this.rssiHistory = rssiHistory
         this.userDefinedName=userDefinedName;
         this.manufacturerKey=manufacturerKey
-        if(this.name == "WH-CH720N"){
-            this.userDefinedName="Sony headphones"
-        }
-        else if (this.name=="JLab GO Pop+-App"){
-            this.userDefinedName="JLab Wireless Earbuds"
-        }
-        else if(this.id == "D8:0D:5B:39:59:E0"){
-            this.userDefinedName = "Air Tag"
-        }
     }
     toString(){
         let out = ""
