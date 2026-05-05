@@ -12,7 +12,6 @@ import { sendNotification } from "./notifications";
 
 
 import company_identifiers from '@/assets/company_identifiers.json'
-import { maybeAddSuffix } from "react-native-reanimated/lib/typescript/common";
 import { ConfigData, readConfigFromFile } from "@/components/utils";
 
 
